@@ -11,6 +11,9 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { BottomNav } from "@/components/hub/bottom-nav";
+import { TEAM_CREST } from "@/lib/hub-types";
+
 
 function NotFoundComponent() {
   return (
@@ -77,19 +80,31 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "المصري بورسعيد | مباريات وأخبار وترتيب لحظة بلحظة" },
+      {
+        name: "description",
+        content:
+          "مركز النادي المصري البورسعيدي: نتائج ومباريات الموسم 2026-2027، جدول ترتيب الدوري، قائمة اللاعبين والهدافين، وآخر الأخبار من فيل جول ويلا كورة.",
+      },
+      { property: "og:title", content: "المصري بورسعيد | Egyptian Football Hub" },
+      {
+        property: "og:description",
+        content:
+          "نتائج ومباريات المصري، ترتيب الدوري، اللاعبون والأخبار — بيانات حية من فيل جول ويلا كورة.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap",
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
@@ -102,7 +117,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ar" dir="rtl">
       <head>
         <HeadContent />
       </head>
@@ -119,8 +134,22 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="min-h-screen bg-background pb-24 font-[Cairo,system-ui,sans-serif]">
+        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-3xl items-center gap-2.5 px-4 py-3">
+            <Link to="/" className="flex items-center gap-2.5">
+              <img src={TEAM_CREST} alt="شعار النادي المصري" className="size-8 object-contain" />
+              <span className="text-sm font-black tracking-tight">ALMASRY SC</span>
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto max-w-3xl px-4 py-5">
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+        </main>
+        <BottomNav />
+      </div>
     </QueryClientProvider>
   );
 }
+
