@@ -37,6 +37,8 @@ function MatchesPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["matches"],
     queryFn: () => getMatches(),
+    refetchInterval: (query) =>
+      query.state.data?.matches.some((m) => m.status === "live") ? 20_000 : false,
   });
 
   if (isLoading) return <SectionSkeleton cards={6} />;

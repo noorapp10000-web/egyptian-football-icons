@@ -46,7 +46,12 @@ export const Route = createFileRoute("/")({
 });
 
 function Hero() {
-  const { data, isLoading } = useQuery({ queryKey: ["matches"], queryFn: () => getMatches() });
+  const { data, isLoading } = useQuery({
+    queryKey: ["matches"],
+    queryFn: () => getMatches(),
+    refetchInterval: (query) =>
+      query.state.data?.matches.some((m) => m.status === "live") ? 20_000 : false,
+  });
 
   const next = data?.matches.find((m) => m.status === "live" || m.status === "upcoming");
 

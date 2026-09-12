@@ -741,7 +741,7 @@ const AGG_NEWS_URL = `https://news.google.com/rss/search?q=${encodeURIComponent(
 )}&hl=ar&gl=EG&ceid=EG:ar`;
 
 export async function loadMatches() {
-  const entry = await cached("matches", 60_000, async () => {
+  const entry = await cached("matches", 20_000, async () => {
     const [results, fixtures] = await Promise.all([
       fetchHtml(MATCHES_URL).then(parseTeamMatches).catch(() => [] as Match[]),
       fetchHtml(FIXTURES_URL).then(parseTeamMatches).catch(() => [] as Match[]),
@@ -841,7 +841,7 @@ export async function loadNews() {
 }
 
 export async function loadMatchDetail(matchId: number) {
-  const entry = await cached(`match-${matchId}`, 60_000, async () => {
+  const entry = await cached(`match-${matchId}`, 20_000, async () => {
     const { matches } = await loadMatches();
     const known = matches.find((m) => m.matchId === matchId);
     const url = known?.url ?? `${FG}/matches/${matchId}/x`;
