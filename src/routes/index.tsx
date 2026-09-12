@@ -148,6 +148,8 @@ function LatestResults() {
 }
 
 function MiniTable() {
+  useScheduledRefresh(["standings"], [20, 22, 0, 3]);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["standings"],
     queryFn: () => getStandings(),
