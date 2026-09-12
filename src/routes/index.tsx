@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TEAM_CREST } from "@/lib/hub-types";
+import { useScheduledRefresh } from "@/lib/scheduled-refresh";
 
 export const Route = createFileRoute("/")({
   head: () => ({
