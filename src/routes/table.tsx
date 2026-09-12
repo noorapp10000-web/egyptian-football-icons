@@ -3,6 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { ListOrdered, Shield } from "lucide-react";
 
 import { getStandings } from "@/lib/hub.functions";
+import { useScheduledRefresh } from "@/lib/scheduled-refresh";
+
+// تحديث تلقائي ٤ مرات يوميًا بتوقيت القاهرة: ٨م، ١٠م، ١٢م، ٣م
+const STANDINGS_REFRESH_HOURS = [20, 22, 0, 3];
 import { ErrorNote, SectionHeading, SectionSkeleton, SourceNote } from "@/components/hub/shared";
 import { Badge } from "@/components/ui/badge";
 
@@ -28,6 +32,8 @@ export const Route = createFileRoute("/table")({
 });
 
 function TablePage() {
+  useScheduledRefresh(["standings"], STANDINGS_REFRESH_HOURS);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["standings"],
     queryFn: () => getStandings(),

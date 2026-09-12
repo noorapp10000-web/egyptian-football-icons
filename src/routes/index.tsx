@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TEAM_CREST } from "@/lib/hub-types";
+import { useScheduledRefresh } from "@/lib/scheduled-refresh";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -148,6 +149,8 @@ function LatestResults() {
 }
 
 function MiniTable() {
+  useScheduledRefresh(["standings"], [20, 22, 0, 3]);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["standings"],
     queryFn: () => getStandings(),
