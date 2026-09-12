@@ -107,7 +107,7 @@ function MatchDetailPage() {
     queryKey: ["match-detail", id],
     queryFn: () => getMatchDetail({ data: { matchId: id } }),
     enabled: Number.isFinite(id),
-    refetchInterval: 60_000,
+    refetchInterval: (query) => (query.state.data?.match.status === "live" ? 20_000 : false),
   });
 
   if (isLoading) return <SectionSkeleton cards={3} />;
