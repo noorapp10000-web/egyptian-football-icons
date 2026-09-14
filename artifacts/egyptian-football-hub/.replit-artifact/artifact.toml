@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Egyptian Football Hub"
+description = "The existing Egyptian football hub web application, preserved as the source product for Capacitor mobile packaging, Firebase authentication, real-time match updates, notifications, and scheduled server synchronization."
+version = "1.0.0"
+id = "artifacts/egyptian-football-hub"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22288
+
+[services.development]
+run = "pnpm --filter @workspace/egyptian-football-hub run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/egyptian-football-hub", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/egyptian-football-hub/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22288"
+BASE_PATH = "/"
