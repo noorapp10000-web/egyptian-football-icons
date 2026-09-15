@@ -39,23 +39,32 @@ jobs:
       - name: Build web bundle
         run: pnpm --filter @workspace/egyptian-football-hub run build
 
-      - name: Require a deploy URL for remote Capacitor mode
-        if: ${{ env.CAP_SERVER_URL == '' }}
+      - name: Explain missing deploy URL
+        if: ${{ env.CAP_SERVER_URL == '' && github.event_name == 'push' }}
+        run: |
+          echo "Web build passed. APK build is waiting for the CAP_SERVER_URL repository variable."
+          echo "Publish the web app, then add its HTTPS URL as CAP_SERVER_URL in GitHub Actions variables."
+
+      - name: Require a deploy URL for manual APK builds
+        if: ${{ env.CAP_SERVER_URL == '' && github.event_name == 'workflow_dispatch' }}
         run: |
           echo "Set the CAP_SERVER_URL repository variable or provide server_url when dispatching this workflow."
           exit 1
 
       - name: Sync Capacitor Android project
+        if: ${{ env.CAP_SERVER_URL != '' }}
         working-directory: artifacts/egyptian-football-hub
         run: pnpm exec cap sync android
 
       - name: Build debug APK
+        if: ${{ env.CAP_SERVER_URL != '' }}
         working-directory: artifacts/egyptian-football-hub/android
         run: |
           chmod +x ./gradlew
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload debug APK
+        if: ${{ env.CAP_SERVER_URL != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: masrawy-fan-apk
