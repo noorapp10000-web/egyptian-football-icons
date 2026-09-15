@@ -16,23 +16,20 @@ import {
   Users,
 } from "lucide-react";
 
-import cupCelebration from "@/assets/gallery/cup-celebration.jpg.asset.json";
-import cupPodium from "@/assets/gallery/cup-podium.jpg.asset.json";
-import cupPoster from "@/assets/gallery/cup-poster.jpg.asset.json";
-import cupTifo from "@/assets/gallery/cup-tifo.jpg.asset.json";
 import { SectionHeading } from "@/components/hub/shared";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { COACH_HISTORY, RECORD_PLAYERS } from "@/lib/history-data";
 import { HONOURS, IDENTITY, LEAGUE_CUP_PATH, PRESIDENTS, SOURCES, TIMELINE } from "@/lib/history-content";
+import { HISTORY_PHOTOS } from "@/lib/history-photos";
 import { LEGENDS, PRESIDENT_PHOTOS, TOP_SCORERS } from "@/lib/history-people";
 import { TEAM_CREST } from "@/lib/hub-types";
 
 const CUP_GALLERY = [
-  { src: cupPoster.url, caption: "البوستر الرسمي لتتويج المصري بكأس عاصمة مصر 2026" },
-  { src: cupPodium.url, caption: "لحظة رفع الكأس وسط الاحتفالات على منصة التتويج" },
-  { src: cupCelebration.url, caption: "احتفال اللاعبين باللقب أمام جماهير بورسعيد" },
-  { src: cupTifo.url, caption: "تيفو جماهير المصري في المدرجات ليلة النهائي" },
+  { src: HISTORY_PHOTOS.gallery[0], caption: "البوستر الرسمي لتتويج المصري بكأس عاصمة مصر 2026" },
+  { src: HISTORY_PHOTOS.gallery[1], caption: "لحظة رفع الكأس وسط الاحتفالات على منصة التتويج" },
+  { src: HISTORY_PHOTOS.gallery[2], caption: "احتفال اللاعبين باللقب أمام جماهير بورسعيد" },
+  { src: HISTORY_PHOTOS.gallery[3], caption: "تيفو جماهير المصري في المدرجات ليلة النهائي" },
 ];
 
 

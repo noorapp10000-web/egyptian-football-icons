@@ -17,7 +17,7 @@ run = "pnpm --filter @workspace/egyptian-football-hub run dev"
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/egyptian-football-hub", "run", "build" ]
 serve = "static"
-publicDir = "artifacts/egyptian-football-hub/dist/public"
+publicDir = "artifacts/egyptian-football-hub/.output/public"
 
 [[services.production.rewrites]]
 from = "/*"
