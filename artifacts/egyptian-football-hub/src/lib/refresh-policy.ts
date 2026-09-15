@@ -1,7 +1,7 @@
 /**
  * سياسة التحديث التلقائي:
  * - الترتيب والأخبار: كل ساعة.
- * - يوم المباراة: من ساعة ونصف قبل البداية → كل دقيقتين (لالتقاط التشكيل فور نزوله).
+ * - يوم المباراة: من ساعة ونصف قبل البداية → كل دقيقة (لالتقاط التشكيل فور نزوله).
  * - أثناء المباراة: كل ٢٠ ثانية.
  * - بعد المباراة: العودة للتحديث كل ساعة.
  */
@@ -10,7 +10,7 @@ import { toDate } from "./time";
 
 export const HOUR = 60 * 60_000;
 export const LIVE_MS = 20_000;
-export const MATCHDAY_MS = 2 * 60_000;
+export const MATCHDAY_MS = 60_000;
 export const PRE_MATCH_WINDOW_MS = 90 * 60_000;
 
 type MatchLike = Pick<Match, "status" | "kickoff" | "kickoffText">;

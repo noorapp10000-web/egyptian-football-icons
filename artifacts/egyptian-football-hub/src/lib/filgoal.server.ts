@@ -194,6 +194,21 @@ async function fetchHtml(url: string) {
 type CacheEntry<T> = { value: T; at: number; live: boolean };
 const cache = new Map<string, CacheEntry<unknown>>();
 
+function matchesCacheTtl(matches: Match[] | undefined) {
+  if (!matches || matches.length === 0) return 60 * 60_000;
+  if (matches.some((match) => match.status === "live")) return 20_000;
+
+  const now = Date.now();
+  const soon = matches.some((match) => {
+    if (match.status !== "upcoming" || !match.kickoff) return false;
+    const kickoff = new Date(match.kickoff).getTime();
+    if (!Number.isFinite(kickoff)) return false;
+    const diff = kickoff - now;
+    return diff <= 90 * 60_000 && diff > -3 * 60 * 60_000;
+  });
+  return soon ? 60_000 : 60 * 60_000;
+}
+
 async function cached<T>(key: string, ttlMs: number, loader: () => Promise<T>) {
   const hit = cache.get(key) as CacheEntry<T> | undefined;
   if (hit && Date.now() - hit.at < ttlMs) return hit;
@@ -892,7 +907,8 @@ const AGG_NEWS_URL = `https://news.google.com/rss/search?q=${encodeURIComponent(
 )}&hl=ar&gl=EG&ceid=EG:ar`;
 
 export async function loadMatches() {
-  const entry = await cached("matches", 20_000, async () => {
+  const existing = cache.get("matches") as CacheEntry<Match[]> | undefined;
+  const entry = await cached("matches", matchesCacheTtl(existing?.value), async () => {
     const [results, fixtures] = await Promise.all([
       fetchHtml(MATCHES_URL).then(parseTeamMatches).catch(() => [] as Match[]),
       fetchHtml(FIXTURES_URL).then(parseTeamMatches).catch(() => [] as Match[]),
@@ -915,6 +931,33 @@ export async function loadMatches() {
     matches: entry.value,
     source: sourceOf("FilGoal", MATCHES_URL, entry.live, entry.at),
   };
+}
+
+let schedulerStarted = false;
+
+/** جدولة مركزية تعمل مرة واحدة مع سيرفر Replit، بدل أن يجلب كل مستخدم من المصدر. */
+export function startHubScheduler() {
+  // start.ts is evaluated by both SSR and the browser bundle. The scheduler
+  // must never run in a user's browser or it would bypass the server cache.
+  if (schedulerStarted || typeof window !== "undefined") return;
+  schedulerStarted = true;
+
+  const refreshMatches = () => {
+    void loadMatches().catch((error) => console.error("جدولة المباريات فشلت:", error));
+  };
+  const refreshNews = () => {
+    void loadNews().catch((error) => console.error("جدولة الأخبار فشلت:", error));
+  };
+  const refreshStandings = () => {
+    void loadStandings().catch((error) => console.error("جدولة الترتيب فشلت:", error));
+  };
+
+  refreshMatches();
+  refreshNews();
+  refreshStandings();
+  setInterval(refreshMatches, 20_000);
+  setInterval(refreshNews, 30 * 60_000);
+  setInterval(refreshStandings, 60 * 60_000);
 }
 
 export async function loadSquad() {
@@ -959,7 +1002,7 @@ export async function loadStandings() {
 }
 
 export async function loadNews() {
-  const entry = await cached("news", 60 * 60_000, async () => {
+  const entry = await cached("news", 30 * 60_000, async () => {
     const [fgHtml, teamHtml, aggXml] = await Promise.all([
       fetchHtml(FG_NEWS_URL).catch(() => ""),
       fetchHtml(FG_TEAM_URL).catch(() => ""),

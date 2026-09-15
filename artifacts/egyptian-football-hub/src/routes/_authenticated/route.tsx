@@ -3,14 +3,14 @@ import { useEffect, useState } from "react";
 
 import { BottomNav } from "@/components/hub/bottom-nav";
 import { TEAM_CREST } from "@/lib/hub-types";
-import { supabase } from "@/integrations/supabase/client";
+import { firebaseAuth } from "@/lib/firebase";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+    const user = firebaseAuth.currentUser;
+    if (!user) throw redirect({ to: "/auth" });
+    return { user };
   },
   component: AuthenticatedLayout,
 });

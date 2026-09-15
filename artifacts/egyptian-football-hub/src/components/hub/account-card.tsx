@@ -2,8 +2,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogIn, LogOut, UserRound } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { firebaseAuth, signOut } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 
 /** بطاقة الحساب داخل الإعدادات: دخول جوجل/البريد أو تسجيل الخروج. */
@@ -12,10 +12,10 @@ export function AccountCard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const signOut = async () => {
+  const handleSignOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    await signOut(firebaseAuth);
     navigate({ to: "/auth", replace: true });
   };
 
@@ -31,7 +31,7 @@ export function AccountCard() {
           <p className="truncate text-[11px] text-muted-foreground" dir="ltr">
             {user.email}
           </p>
-          <Button variant="outline" onClick={signOut} className="rounded-xl">
+            <Button variant="outline" onClick={handleSignOut} className="rounded-xl">
             <LogOut className="size-4" /> تسجيل الخروج
           </Button>
         </>

@@ -9,13 +9,15 @@ const config: CapacitorConfig = {
   appId: "app.lovable.masrawyfan",
   appName: "Masrawy Fan",
   webDir: "mobile/www",
-  server: {
-    url:
-      process.env["CAP_SERVER_URL"] ??
-      "https://project--fed06797-85e0-46bd-acbd-d420b4b17003.lovable.app",
-    cleartext: false,
-    androidScheme: "https",
-  },
+  ...(process.env["CAP_SERVER_URL"]
+    ? {
+        server: {
+          url: process.env["CAP_SERVER_URL"],
+          cleartext: false,
+          androidScheme: "https" as const,
+        },
+      }
+    : {}),
   android: {
     allowMixedContent: false,
     backgroundColor: "#0b0f17",

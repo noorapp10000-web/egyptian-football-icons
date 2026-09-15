@@ -2,9 +2,16 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { LogIn } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 
-import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  firebaseAuth,
+  getRedirectResult,
+  googleProvider,
+  signInWithPopup,
+  signInWithRedirect,
+} from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { TEAM_CREST } from "@/lib/hub-types";
 
@@ -38,19 +45,27 @@ function AuthPage() {
     if (!loading && isAuthenticated) navigate({ to: "/", replace: true });
   }, [loading, isAuthenticated, navigate]);
 
+  useEffect(() => {
+    void getRedirectResult(firebaseAuth).catch(() => {
+      toast.error("تعذر إكمال تسجيل الدخول بحساب جوجل");
+    });
+  }, []);
+
   const google = async () => {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/auth`,
-      extraParams: { prompt: "select_account" },
-    });
-    if (result.error) {
+    try {
+      googleProvider.setCustomParameters({ prompt: "select_account" });
+      if (Capacitor.isNativePlatform()) {
+        await signInWithRedirect(firebaseAuth, googleProvider);
+        return;
+      }
+      await signInWithPopup(firebaseAuth, googleProvider);
+      navigate({ to: "/", replace: true });
+    } catch (error) {
       setBusy(false);
       toast.error("تعذر الدخول بحساب جوجل، حاول مرة أخرى");
-      return;
+      console.error(error);
     }
-    if (result.redirected) return;
-    navigate({ to: "/", replace: true });
   };
 
   return (

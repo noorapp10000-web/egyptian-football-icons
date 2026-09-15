@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { useOfflinePersistence } from "@/lib/offline-cache";
+import { usePushNotifications } from "@/lib/push-notifications";
 
 
 
@@ -133,6 +134,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useOfflinePersistence(queryClient);
+  usePushNotifications();
 
   return (
     <QueryClientProvider client={queryClient}>

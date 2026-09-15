@@ -1,19 +1,29 @@
-/** مزامنة الاسم وتفضيلات الإشعارات مع حساب المستخدم على السيرفر. */
+/** مزامنة الاسم وتفضيلات الإشعارات مع حساب Firebase على API Server. */
 import { useEffect } from "react";
 
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { firebaseAuth } from "@/lib/firebase";
 import type { Prefs } from "@/lib/prefs";
 
-/* أنواع الجداول المولّدة بتتحدث بعد أول نشر، فبنستخدم واجهة مرنة لحد ساعتها. */
-type LooseRow = Record<string, unknown> | null;
-type LooseTable = {
-  select: (cols: string) => {
-    eq: (col: string, val: string) => { maybeSingle: () => Promise<{ data: LooseRow }> };
+async function apiRequest(path: string, init?: RequestInit) {
+  const token = await firebaseAuth.currentUser?.getIdToken();
+  const response = await fetch(`/api${path}`, {
+    ...init,
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
+    },
+  });
+  if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+  return (await response.json()) as {
+    preferences: {
+      username: string;
+      notificationsEnabled: boolean;
+      notifications: Record<string, boolean>;
+    };
   };
-  upsert: (values: Record<string, unknown>) => Promise<unknown>;
-};
-const db = supabase as unknown as { from: (table: string) => LooseTable };
+}
 
 export function usePrefsSync(
   prefs: Prefs,
@@ -21,32 +31,27 @@ export function usePrefsSync(
   apply: (patch: Partial<Prefs>) => void,
 ) {
   const { user } = useAuth();
-  const userId = user?.id;
+  const userId = user?.uid;
 
   // أول ما يسجّل الدخول: نجيب القيم المحفوظة على السيرفر.
   useEffect(() => {
     if (!userId || !ready) return;
     let cancelled = false;
     (async () => {
-      const [{ data: profile }, { data: row }] = await Promise.all([
-        db.from("profiles").select("username").eq("id", userId).maybeSingle(),
-        db
-          .from("notification_prefs")
-          .select("enabled, types")
-          .eq("user_id", userId)
-          .maybeSingle(),
-      ]);
+      let result: Awaited<ReturnType<typeof apiRequest>>;
+      try {
+        result = await apiRequest("/me/preferences");
+      } catch {
+        return;
+      }
       if (cancelled) return;
       const patch: Partial<Prefs> = {};
-      const username = profile?.["username"];
-      if (typeof username === "string" && username) patch.username = username;
-      if (row) {
-        if (typeof row["enabled"] === "boolean") patch.notificationsEnabled = row["enabled"];
-        const types = (row["types"] ?? {}) as Record<string, boolean>;
-
-        if (Object.keys(types).length > 0) {
-          patch.notifications = { ...prefs.notifications, ...types };
-        }
+      if (result.preferences.username) patch.username = result.preferences.username;
+      if (typeof result.preferences.notificationsEnabled === "boolean") {
+        patch.notificationsEnabled = result.preferences.notificationsEnabled;
+      }
+      if (Object.keys(result.preferences.notifications).length > 0) {
+        patch.notifications = { ...prefs.notifications, ...result.preferences.notifications };
       }
       if (Object.keys(patch).length > 0) apply(patch);
     })();
@@ -59,13 +64,17 @@ export function usePrefsSync(
   return {
     saveUsername: async (username: string) => {
       if (!userId) return;
-      await db.from("profiles").upsert({ id: userId, username, updated_at: new Date().toISOString() });
+      await apiRequest("/me/preferences", {
+        method: "PUT",
+        body: JSON.stringify({ username }),
+      });
     },
     saveNotifications: async (enabled: boolean, types: Record<string, boolean>) => {
       if (!userId) return;
-      await db
-        .from("notification_prefs")
-        .upsert({ user_id: userId, enabled, types, updated_at: new Date().toISOString() });
+      await apiRequest("/me/preferences", {
+        method: "PUT",
+        body: JSON.stringify({ notificationsEnabled: enabled, notifications: types }),
+      });
     },
     signedIn: !!userId,
   };
