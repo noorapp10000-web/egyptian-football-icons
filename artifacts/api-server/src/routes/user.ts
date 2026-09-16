@@ -1,5 +1,5 @@
 import { Router, type RequestHandler } from "express";
-import { firebaseAuth } from "../lib/firebase-admin";
+import { verifyFirebaseIdToken } from "../lib/firebase-admin";
 import { addDevice, getPreferences, savePreferences } from "../lib/user-store";
 
 type FirebaseUser = { uid: string; email?: string };
@@ -15,7 +15,7 @@ const requireFirebaseUser: RequestHandler = async (req, res, next) => {
   }
 
   try {
-    const decoded = await firebaseAuth().verifyIdToken(token);
+    const decoded = await verifyFirebaseIdToken(token);
     res.locals.firebaseUser = { uid: decoded.uid, email: decoded.email } satisfies FirebaseUser;
     next();
   } catch (error) {

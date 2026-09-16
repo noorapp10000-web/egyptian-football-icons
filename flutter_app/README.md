@@ -46,3 +46,14 @@ flutter run \
 1. Anonymous Authentication.
 2. Cloud Messaging.
 3. صلاحية الإشعارات في Android 13 أو أحدث.
+
+## ربط Firebase الجديد بالسيرفر
+
+بما أن Firebase التطبيق منفصل عن Firebase الموقع، يجب إضافة ملف حساب الخدمة
+للمشروع الجديد إلى Secrets الخاصة بتشغيل API باسم:
+
+`FLUTTER_FIREBASE_SERVICE_ACCOUNT_JSON`
+
+يجب أن تكون قيمة السر هي محتوى ملف Service Account JSON كاملًا، ولا تُحفظ داخل
+Git أو داخل التطبيق. السيرفر يقبل توكنات Firebase الموقع القديمة وتوكنات
+Firebase Flutter الجديدة معًا.
