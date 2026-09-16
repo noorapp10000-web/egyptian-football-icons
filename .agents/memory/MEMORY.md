@@ -1,0 +1,1 @@
+- [GitHub push authentication](github-push-auth.md) — use a temporary Basic header; never expose the token through a remote URL or credential helper.
