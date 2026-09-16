@@ -3,7 +3,8 @@ class AppConfig {
 
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://example.com/api',
+    defaultValue:
+        'https://egyptian-football-icons-flutter--jowapip491.replit.app/api',
   );
 
   static const firebaseApiKey = String.fromEnvironment('FIREBASE_API_KEY');
