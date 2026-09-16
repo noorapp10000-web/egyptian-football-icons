@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "669486615469",
+    "project_id": "almasry-c683c",
+    "storage_bucket": "almasry-c683c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:669486615469:android:df97c7735131d962bf6f24",
+        "android_client_info": {
+          "package_name": "com.noorapp.egyptian_football_hub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHhIakysiDEb8-HmvmtGEgohJRhvCSDbc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
