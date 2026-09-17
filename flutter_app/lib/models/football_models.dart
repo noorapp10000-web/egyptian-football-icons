@@ -53,8 +53,8 @@ class Match {
       if (parsed != null) {
         try {
           final local = parsed.toLocal();
-          return '${DateFormat('HH:mm').format(local)} - '
-              '${DateFormat('dd-MM-yyyy').format(local)}';
+          return '${DateFormat('dd-MM-yyyy', 'en').format(local)} - '
+              '${DateFormat('h:mm a', 'en').format(local)}';
         } catch (_) {
           // Never let date formatting break the UI.
         }

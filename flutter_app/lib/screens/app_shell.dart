@@ -10,6 +10,7 @@ import '../models/history_content.dart';
 import '../services/api_client.dart';
 import '../services/offline_cache.dart';
 import '../widgets/brand_mark.dart';
+import '../widgets/cached_remote_image.dart';
 
 const teamCrest = 'assets/images/team_crest.png';
 
@@ -36,17 +37,17 @@ class _AppShellState extends State<AppShell> {
     ];
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 18,
+        titleSpacing: 14,
         title: const Row(
           children: [
-            BrandMark(size: 34),
-            SizedBox(width: 10),
+            BrandMark(size: 28),
+            SizedBox(width: 8),
             Text(
               'ALMASRY SC',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 1.1,
+                letterSpacing: .6,
               ),
             ),
           ],
@@ -149,6 +150,32 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
         children: [
+          const SectionCard(
+            gradient: true,
+            child: Row(
+              children: [
+                BrandMark(size: 54),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'النادي المصري البورسعيدي',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'مباريات · ترتيب · لاعبون · أخبار',
+                        style: TextStyle(fontSize: 10, color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           FutureBuilder<List<Match>>(
             future: api.getMatches(),
             builder: (context, snapshot) {
@@ -224,11 +251,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             .map(
                               (row) => ListTile(
                                 dense: true,
-                                leading: CircleAvatar(
-                                  radius: 13,
-                                  child: Text(
-                                    '${row.rank}',
-                                    style: const TextStyle(fontSize: 10),
+                                leading: SizedBox(
+                                  width: 58,
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        child: Text('${row.rank}', style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                                      ),
+                                      TeamLogo(url: row.team.crestUrl, size: 26),
+                                    ],
                                   ),
                                 ),
                                 title: Text(
@@ -265,21 +297,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   ...players
+                      .where((player) => (player.goals ?? 0) > 0)
                       .take(5)
                       .toList()
                       .asMap()
                       .entries
                       .map(
-                        (entry) => ListTile(
-                          leading: CircleAvatar(
-                            child: Text('${entry.key + 1}'),
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: SectionCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                            child: InkWell(
+                              onTap: () => openPlayer(context, entry.value.id),
+                              child: Row(
+                                children: [
+                                  SizedBox(width: 20, child: Text('${entry.key + 1}', style: const TextStyle(color: kGold, fontWeight: FontWeight.w900))),
+                                  CachedAvatar(url: entry.value.photoUrl, size: 38),
+                                  const SizedBox(width: 9),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(entry.value.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                                        Text(entry.value.position, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(color: kGold.withOpacity(.13), borderRadius: BorderRadius.circular(7)),
+                                    child: Text('${entry.value.goals ?? 0} ⚽', style: const TextStyle(color: kGold, fontSize: 11, fontWeight: FontWeight.w900)),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          title: Text(entry.value.name),
-                          trailing: Text(
-                            '${entry.value.goals ?? 0} هدف',
-                            style: const TextStyle(color: kGold),
-                          ),
-                          onTap: () => openPlayer(context, entry.value.id),
                         ),
                       ),
                 ],
@@ -536,7 +588,7 @@ class SquadScreen extends StatelessWidget {
               .entries
               .map(
                 (e) => ListTile(
-                  leading: CircleAvatar(child: Text('${e.key + 1}')),
+                  leading: CachedAvatar(url: e.value.photoUrl, size: 34),
                   title: Text(e.value.name),
                   trailing: Text(
                     '${e.value.goals ?? 0} هدف',
@@ -2060,19 +2112,7 @@ class _PitchPlayer extends StatelessWidget {
     width: 62,
     child: Column(
       children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: kPrimary.withOpacity(.18),
-          backgroundImage: player.photoUrl == null
-              ? null
-              : NetworkImage(player.photoUrl!),
-          child: player.photoUrl == null
-              ? Text(
-                  '${player.number ?? '—'}',
-                  style: const TextStyle(fontSize: 11, color: Colors.white),
-                )
-              : null,
-        ),
+        CachedAvatar(url: player.photoUrl, size: 36),
         const SizedBox(height: 3),
         Text(
           player.name.split(' ').take(2).join(' '),
@@ -2211,15 +2251,7 @@ class PlayerDetailScreen extends StatelessWidget {
             SectionCard(
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 48,
-                    backgroundImage: p['photoUrl'] != null
-                        ? NetworkImage(text(p['photoUrl']))
-                        : null,
-                    child: p['photoUrl'] == null
-                        ? const Icon(Icons.person, size: 42)
-                        : null,
-                  ),
+                  CachedAvatar(url: p['photoUrl']?.toString(), size: 96),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -2580,15 +2612,11 @@ class PlayerCard extends StatelessWidget {
                 ? const Center(
                     child: Icon(Icons.person, size: 60, color: Colors.white24),
                   )
-                : Image.network(
-                    player.photoUrl!,
+                : CachedRemoteImage(
+                    url: player.photoUrl,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.person,
-                      size: 60,
-                      color: Colors.white24,
-                    ),
+                    fallbackIcon: Icons.person,
                   ),
           ),
           Padding(
@@ -2638,12 +2666,11 @@ class NewsCard extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(20),
               ),
-              child: Image.network(
-                item.imageUrl!,
+              child: CachedRemoteImage(
+                url: item.imageUrl,
                 height: hero ? 240 : 170,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox(height: 12),
               ),
             ),
           Padding(
@@ -2768,11 +2795,19 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Icon(icon, size: 18, color: kPrimary),
+      Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: kPrimary.withOpacity(.13),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 16, color: kPrimary),
+      ),
       const SizedBox(width: 8),
       Text(
         title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
       ),
     ],
   );
@@ -2815,13 +2850,14 @@ class TeamLogo extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     width: size,
     height: size,
-    child: url == null
-        ? const BrandMark()
-        : Image.network(
-            url!,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const BrandMark(),
-          ),
+    child: CachedRemoteImage(
+      url: url,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      fallbackIcon: Icons.shield_outlined,
+      fallback: const BrandMark(),
+    ),
   );
 }
 

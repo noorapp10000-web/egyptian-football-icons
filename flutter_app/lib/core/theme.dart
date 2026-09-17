@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-const kBackground = Color(0xff071a15);
-const kCard = Color(0xff102821);
-const kCardAlt = Color(0xff15352b);
-const kPrimary = Color(0xff5fce93);
-const kGold = Color(0xffe9c76b);
+const kBackground = Color(0xff071912);
+const kCard = Color(0xff0d271d);
+const kCardAlt = Color(0xff133326);
+const kPrimary = Color(0xff20c478);
+const kGold = Color(0xffd6af2f);
 const kLive = Color(0xfff0785d);
 
 ThemeData buildAppTheme() {
@@ -54,8 +54,20 @@ ThemeData buildAppTheme() {
       color: kCard,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Color(0xff2d4b3e)),
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xff254638)),
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      height: 64,
+      labelTextStyle: WidgetStateProperty.all(
+        const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          size: 20,
+          color: states.contains(WidgetState.selected) ? kPrimary : Colors.white54,
+        ),
       ),
     ),
   );
