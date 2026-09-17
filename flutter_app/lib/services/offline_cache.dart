@@ -16,6 +16,13 @@ class OfflineCache {
     await prefs.setString('$_prefix$key', jsonEncode(value));
   }
 
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in prefs.getKeys().where((key) => key.startsWith(_prefix))) {
+      await prefs.remove(key);
+    }
+  }
+
   Future<Map<String, dynamic>?> read(String key) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('$_prefix$key');

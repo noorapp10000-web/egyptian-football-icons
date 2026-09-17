@@ -67,11 +67,12 @@ class _AppShellState extends State<AppShell> {
         children: [
           ValueListenableBuilder<bool>(
             valueListenable: offlineState,
-            builder: (_, offline, __) => offline
-                ? const OfflineBanner()
-                : const SizedBox.shrink(),
+            builder: (_, offline, __) =>
+                offline ? const OfflineBanner() : const SizedBox.shrink(),
           ),
-          Expanded(child: IndexedStack(index: index, children: pages)),
+          Expanded(
+            child: IndexedStack(index: index, children: pages),
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -121,14 +122,20 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.api});
   final ApiClient api;
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
+class _HomeScreenState extends State<HomeScreen> {
+  int refresh = 0;
+  ApiClient get api => widget.api;
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: () async {},
+      onRefresh: () async => setState(() => refresh++),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
         children: [
@@ -151,43 +158,11 @@ class HomeScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 18),
-          const SectionTitle(
-            icon: Icons.dashboard_outlined,
-            title: 'مركز المصري',
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: const [
-              QuickTile(
-                icon: Icons.calendar_month,
-                label: 'المباريات',
-                color: kPrimary,
-              ),
-              QuickTile(
-                icon: Icons.list_alt,
-                label: 'جدول الدوري',
-                color: kGold,
-              ),
-              QuickTile(
-                icon: Icons.groups,
-                label: 'قائمة الفريق',
-                color: Color(0xff77b5e8),
-              ),
-              QuickTile(
-                icon: Icons.newspaper,
-                label: 'آخر الأخبار',
-                color: kLive,
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
           FutureBuilder<List<Match>>(
             future: api.getMatches(),
             builder: (context, snapshot) {
               final data = snapshot.data ?? [];
-              final recent = data.where((m) => m.isPlayed).take(3).toList();
+              final recent = data.where((m) => m.isPlayed).take(4).toList();
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -211,27 +186,175 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
+          const SizedBox(height: 18),
+          FutureBuilder <
+              List<Standing>(
+                future: api.getStandings(),
+                builder: (context, snapshot) {
+                  final all = snapshot.data ?? <Standing>[];
+                  final masryIndex = all.indexWhere((row) => row.isMasry);
+                  final maxStart = (all.length - 5).clamp(0, all.length);
+                  final start = masryIndex < 0
+                      ? 0
+                      : (masryIndex - 2).clamp(0, maxStart);
+                  final rows = all.skip(start).take(5);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SectionTitle(
+                        icon: Icons.list_alt,
+                        title: 'ترتيب المصري في الدوري',
+                      ),
+                      const SizedBox(height: 8),
+                      if (snapshot.connectionState == ConnectionState.waiting)
+                        const LoadingCard()
+                      else
+                        SectionCard(
+                          child: Column(
+                            children: rows
+                                .map(
+                                  (row) => ListTile(
+                                    dense: true,
+                                    leading: CircleAvatar(
+                                      radius: 13,
+                                      child: Text(
+                                        '${row.rank}',
+                                        style: const TextStyle(fontSize: 10),
+                                      ),
+                                    ),
+                                    title: Text(
+                                      row.team.name,
+                                      style: TextStyle(
+                                        fontWeight: row.isMasry
+                                            ? FontWeight.w900
+                                            : FontWeight.w600,
+                                        color: row.isMasry ? kPrimary : null,
+                                      ),
+                                    ),
+                                    trailing: Text('${row.points} نقطة'),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+          const SizedBox(height: 18),
+          FutureBuilder<List<Player>>(
+            future: api.getSquad(),
+            builder: (context, snapshot) {
+              final players = [...(snapshot.data ?? <Player>[])];
+              players.sort((a, b) => (b.goals ?? 0).compareTo(a.goals ?? 0));
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionTitle(
+                    icon: Icons.gps_fixed,
+                    title: 'هدافو الفريق',
+                  ),
+                  const SizedBox(height: 8),
+                  ...players
+                      .take(5)
+                      .toList()
+                      .asMap()
+                      .entries
+                      .map(
+                        (entry) => ListTile(
+                          leading: CircleAvatar(
+                            child: Text('${entry.key + 1}'),
+                          ),
+                          title: Text(entry.value.name),
+                          trailing: Text(
+                            '${entry.value.goals ?? 0} هدف',
+                            style: const TextStyle(color: kGold),
+                          ),
+                          onTap: () => openPlayer(context, entry.value.id),
+                        ),
+                      ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 18),
+          FutureBuilder<List<NewsItem>>(
+            future: api.getNews(),
+            builder: (context, snapshot) {
+              final news = (snapshot.data ?? <NewsItem>[]).take(4);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionTitle(
+                    icon: Icons.newspaper,
+                    title: 'آخر الأخبار',
+                  ),
+                  const SizedBox(height: 8),
+                  ...news.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: NewsCard(item: item),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SourceNote(),
         ],
       ),
     );
   }
 }
 
-class MatchesScreen extends StatelessWidget {
+class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key, required this.api});
   final ApiClient api;
+  @override
+  State<MatchesScreen> createState() => _MatchesScreenState();
+}
 
+class _MatchesScreenState extends State<MatchesScreen> {
+  bool results = false;
   @override
   Widget build(BuildContext context) => DataPage<List<Match>>(
     title: 'كل المباريات',
     icon: Icons.calendar_month,
-    future: api.getMatches(),
-    builder: (matches) => ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-      itemCount: matches.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) => MatchListTile(match: matches[index]),
-    ),
+    future: widget.api.getMatches(),
+    builder: (matches) {
+      final upcoming = matches.where((m) => !m.isPlayed).toList();
+      final played = matches.where((m) => m.isPlayed).toList();
+      final shown = results ? played : upcoming;
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+        children: [
+          SegmentedButton<bool>(
+            segments: [
+              ButtonSegment(
+                value: false,
+                label: Text('قادمة (${upcoming.length})'),
+              ),
+              ButtonSegment(
+                value: true,
+                label: Text('النتائج (${played.length})'),
+              ),
+            ],
+            selected: {results},
+            onSelectionChanged: (v) => setState(() => results = v.first),
+          ),
+          const SizedBox(height: 12),
+          if (shown.isEmpty)
+            const SectionCard(child: Text('لا توجد مباريات في هذا القسم')),
+          ...shown.map(
+            (m) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: MatchListTile(match: m),
+            ),
+          ),
+          const SourceNote(),
+        ],
+      );
+    },
   );
 }
 
@@ -265,7 +388,21 @@ class TableScreen extends StatelessWidget {
                         style: TextStyle(color: Colors.white54),
                       ),
                     ),
-                    Text('لعب   نقاط', style: TextStyle(color: Colors.white54)),
+                    SizedBox(
+                      width: 150,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('لعب', style: TextStyle(color: Colors.white54)),
+                          Text(
+                            'له/عليه',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                          Text('+/-', style: TextStyle(color: Colors.white54)),
+                          Text('نقاط', style: TextStyle(color: Colors.white54)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -339,61 +476,128 @@ class TableScreen extends StatelessWidget {
 class SquadScreen extends StatelessWidget {
   const SquadScreen({super.key, required this.api});
   final ApiClient api;
+  String group(String p) {
+    if (p.contains('حارس')) return 'حراس المرمى';
+    if (p.contains('دفاع') || p.contains('ظهير') || p.contains('قلب'))
+      return 'الدفاع';
+    if (p.contains('وسط')) return 'الوسط';
+    if (p.contains('هجوم') || p.contains('مهاجم') || p.contains('جناح'))
+      return 'الهجوم';
+    return 'لاعبون آخرون';
+  }
 
   @override
   Widget build(BuildContext context) => DataPage<List<Player>>(
     title: 'قائمة الفريق',
     icon: Icons.groups,
     future: api.getSquad(),
-    builder: (players) => ListView(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-      children: [
-        const SectionCard(
-          child: Row(
-            children: [
-              BrandMark(size: 54),
-              SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  'الفريق الأول للنادي المصري البورسعيدي',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+    builder: (players) {
+      final scorers = [...players]
+        ..sort((a, b) => (b.goals ?? 0).compareTo(a.goals ?? 0));
+      final groups = <String, List<Player>>{};
+      for (final p in players)
+        groups.putIfAbsent(group(p.position), () => []).add(p);
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+        children: [
+          const SectionCard(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: BrandMark(size: 54),
+              title: Text(
+                'الفريق الأول للنادي المصري',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              subtitle: Text('الجهاز الفني وقائمة اللاعبين'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const SectionTitle(icon: Icons.gps_fixed, title: 'هدافو الفريق'),
+          const SizedBox(height: 8),
+          ...scorers
+              .take(5)
+              .toList()
+              .asMap()
+              .entries
+              .map(
+                (e) => ListTile(
+                  leading: CircleAvatar(child: Text('${e.key + 1}')),
+                  title: Text(e.value.name),
+                  trailing: Text(
+                    '${e.value.goals ?? 0} هدف',
+                    style: const TextStyle(
+                      color: kGold,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () => openPlayer(context, e.value.id),
                 ),
               ),
+          for (final title in [
+            'حراس المرمى',
+            'الدفاع',
+            'الوسط',
+            'الهجوم',
+            'لاعبون آخرون',
+          ])
+            if (groups[title]?.isNotEmpty ?? false) ...[
+              const SizedBox(height: 16),
+              SectionTitle(icon: Icons.groups_outlined, title: title),
+              const SizedBox(height: 8),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: .82,
+                ),
+                itemCount: groups[title]!.length,
+                itemBuilder: (_, i) => PlayerCard(player: groups[title]![i]),
+              ),
             ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: .82,
-          ),
-          itemCount: players.length,
-          itemBuilder: (_, index) => PlayerCard(player: players[index]),
-        ),
-      ],
-    ),
+          const SourceNote(),
+        ],
+      );
+    },
   );
 }
+
+void openPlayer(BuildContext context, int id) => Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => PlayerDetailScreen(api: ApiClient(), playerId: id),
+  ),
+);
 
 class NewsScreen extends StatelessWidget {
   const NewsScreen({super.key, required this.api});
   final ApiClient api;
-
   @override
   Widget build(BuildContext context) => DataPage<List<NewsItem>>(
     title: 'آخر الأخبار',
     icon: Icons.newspaper,
     future: api.getNews(),
-    builder: (news) => ListView.separated(
+    builder: (news) => ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-      itemCount: news.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) => NewsCard(item: news[index]),
+      children: [
+        if (news.isEmpty)
+          const SectionCard(child: Center(child: Text('لا توجد أخبار جديدة')))
+        else ...[
+          NewsCard(item: news.first, hero: true),
+          const SizedBox(height: 12),
+          ...news
+              .skip(1)
+              .map(
+                (n) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: NewsCard(item: n),
+                ),
+              ),
+        ],
+        const SourceNote(),
+      ],
     ),
   );
 }
@@ -485,9 +689,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
     2 => const _CupPathSection(),
     3 => const _CoachesSection(),
     4 => const _PresidentsSection(),
-    5 => const _RecordsSection(title: 'أفضل الهدافين في التاريخ', records: historyTopScorers, statLabel: 'هدف'),
+    5 => const _RecordsSection(
+      title: 'أفضل الهدافين في التاريخ',
+      records: historyTopScorers,
+      statLabel: 'هدف',
+    ),
     6 => const _LegendsSection(),
-    7 => const _RecordsSection(title: 'الأكثر مشاركة في تاريخ النادي', records: historyAppearances, statLabel: 'مباراة'),
+    7 => const _RecordsSection(
+      title: 'الأكثر مشاركة في تاريخ النادي',
+      records: historyAppearances,
+      statLabel: 'مباراة',
+    ),
     _ => const _IdentitySection(),
   };
 }
@@ -509,9 +721,20 @@ class _TimelineSection extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(item.year, style: const TextStyle(color: kGold, fontWeight: FontWeight.w900)),
+                  Text(
+                    item.year,
+                    style: const TextStyle(
+                      color: kGold,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w900))),
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
                 ],
               ),
               if (item.image != null) ...[
@@ -527,7 +750,10 @@ class _TimelineSection extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 8),
-              Text(item.body, style: const TextStyle(color: Colors.white70, height: 1.65)),
+              Text(
+                item.body,
+                style: const TextStyle(color: Colors.white70, height: 1.65),
+              ),
             ],
           ),
         ),
@@ -544,7 +770,10 @@ class _HonoursSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(icon: Icons.emoji_events_outlined, title: 'خزانة البطولات'),
+      const SectionTitle(
+        icon: Icons.emoji_events_outlined,
+        title: 'خزانة البطولات',
+      ),
       const SizedBox(height: 10),
       for (final honour in historyHonours) ...[
         SectionCard(
@@ -553,28 +782,58 @@ class _HonoursSection extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Expanded(child: Text(honour.title, style: const TextStyle(fontWeight: FontWeight.w900))),
-                  Text('${honour.wins.length}× بطل', style: const TextStyle(color: kGold, fontWeight: FontWeight.w800)),
+                  Expanded(
+                    child: Text(
+                      honour.title,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  Text(
+                    '${honour.wins.length}× بطل',
+                    style: const TextStyle(
+                      color: kGold,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: [for (final win in honour.wins) _HistoryPill(text: win)],
+                children: [
+                  for (final win in honour.wins) _HistoryPill(text: win),
+                ],
               ),
               if (honour.runnersUp.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                const Text('الوصافة', style: TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w800)),
+                const Text(
+                  'الوصافة',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 5),
                 Wrap(
                   spacing: 6,
-                  children: [for (final year in honour.runnersUp) _HistoryPill(text: year, muted: true)],
+                  children: [
+                    for (final year in honour.runnersUp)
+                      _HistoryPill(text: year, muted: true),
+                  ],
                 ),
               ],
               if (honour.note != null) ...[
                 const SizedBox(height: 10),
-                Text(honour.note!, style: const TextStyle(color: kPrimary, fontSize: 11, fontWeight: FontWeight.w800)),
+                Text(
+                  honour.note!,
+                  style: const TextStyle(
+                    color: kPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ],
             ],
           ),
@@ -587,32 +846,79 @@ class _HonoursSection extends StatelessWidget {
 
 class _CupPathSection extends StatelessWidget {
   const _CupPathSection();
-
+  static const stages = <(String, String, String, List<String>)>[
+    (
+      'دور المجموعات',
+      'بداية ثابتة حسمت بطاقة العبور',
+      '3 فوز · تعادلان · خسارة',
+      [
+        '11 ديسمبر 2025 · الاتحاد السكندري 0–0 المصري',
+        '19 ديسمبر 2025 · المصري 1–0 زد',
+        '25 ديسمبر 2025 · حرس الحدود 0–1 المصري',
+        '5 يناير 2026 · المصري 2–0 سموحة',
+        '10 يناير 2026 · كهرباء الإسماعيلية 1–1 المصري',
+        '15 يناير 2026 · المصري 0–2 الزمالك',
+      ],
+    ),
+    (
+      'ربع النهائي',
+      'تفوق واضح على الجونة ذهابًا وإيابًا',
+      '4–2 في مجموع المباراتين',
+      [
+        '26 مارس 2026 · الجونة 0–2 المصري · ذهاب',
+        '30 مارس 2026 · المصري 2–2 الجونة · إياب',
+      ],
+    ),
+    (
+      'نصف النهائي',
+      'عودة مثيرة وحسم من نقطة الجزاء',
+      '6–5 بركلات الترجيح',
+      [
+        '25 مايو 2026 · زد 1–0 المصري · ذهاب',
+        '1 يونيو 2026 · المصري 1–0 زد · إياب · 6–5 ترجيح',
+      ],
+    ),
+    (
+      'النهائي',
+      'ليلة التتويج وعودة البطولات بعد 28 عامًا',
+      'المصري بطل كأس عاصمة مصر',
+      ['8 يونيو 2026 · إنبي 0–3 المصري · النهائي'],
+    ),
+  ];
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const SectionTitle(icon: Icons.route, title: 'مسار كأس عاصمة مصر 2026'),
       const SizedBox(height: 10),
-      const SectionCard(
-        child: Text(
-          'من دور المجموعات إلى النهائي، سجل المصري مشوارًا قويًا انتهى بالفوز على إنبي 3–0 والتتويج بالكأس.',
-          style: TextStyle(color: Colors.white70, height: 1.6),
-        ),
-      ),
-      const SizedBox(height: 10),
-      for (final item in const [
-        ('دور المجموعات', 'نتائج متوازنة وتأهل مستحق'),
-        ('نصف النهائي', 'عبور صعب أمام منافس قوي'),
-        ('النهائي · 8 يونيو 2026', 'المصري 3 — 0 إنبي'),
-      ]) ...[
+      for (final stage in stages) ...[
         SectionCard(
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.check_circle_outline, color: kPrimary),
-              const SizedBox(width: 10),
-              Expanded(child: Text(item.$1, style: const TextStyle(fontWeight: FontWeight.w900))),
-              Text(item.$2, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              Text(
+                stage.$1,
+                style: const TextStyle(
+                  color: kGold,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(stage.$2, style: const TextStyle(color: Colors.white70)),
+              Text(
+                stage.$3,
+                style: const TextStyle(
+                  color: kPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Divider(),
+              ...stage.$4.map(
+                (m) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(m, style: const TextStyle(fontSize: 11)),
+                ),
+              ),
             ],
           ),
         ),
@@ -623,11 +929,29 @@ class _CupPathSection extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: SizedBox(
-            height: 170,
+            height: 190,
             child: PageView(
               children: [
                 for (final image in historyGallery)
-                  Image.asset(historyAsset(image), fit: BoxFit.cover),
+                  Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(historyAsset(image), fit: BoxFit.cover),
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          color: Colors.black54,
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            image.replaceAll('.webp', ''),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -644,7 +968,10 @@ class _CoachesSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(icon: Icons.manage_accounts_outlined, title: 'تسلسل المدربين'),
+      const SectionTitle(
+        icon: Icons.manage_accounts_outlined,
+        title: 'تسلسل المدربين',
+      ),
       const SizedBox(height: 5),
       const Text(
         'فترات تدريبية موثقة من بوشكاش 1979 حتى اليوم، مع الصور المحلية المتاحة.',
@@ -671,9 +998,15 @@ class _PresidentsSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(icon: Icons.workspace_premium_outlined, title: 'تسلسل رؤساء النادي'),
+      const SectionTitle(
+        icon: Icons.workspace_premium_outlined,
+        title: 'تسلسل رؤساء النادي',
+      ),
       const SizedBox(height: 5),
-      const Text('من أحمد حسني 1920 إلى كامل أبو علي — فترات رئاسة موثقة.', style: TextStyle(color: Colors.white60, fontSize: 11)),
+      const Text(
+        'من أحمد حسني 1920 إلى كامل أبو علي — فترات رئاسة موثقة.',
+        style: TextStyle(color: Colors.white60, fontSize: 11),
+      ),
       const SizedBox(height: 10),
       for (final president in historyPresidents) ...[
         _HistoryPersonTile(
@@ -689,7 +1022,11 @@ class _PresidentsSection extends StatelessWidget {
 }
 
 class _RecordsSection extends StatelessWidget {
-  const _RecordsSection({required this.title, required this.records, required this.statLabel});
+  const _RecordsSection({
+    required this.title,
+    required this.records,
+    required this.statLabel,
+  });
 
   final String title;
   final List<HistoryRecord> records;
@@ -701,29 +1038,64 @@ class _RecordsSection extends StatelessWidget {
     children: [
       SectionTitle(icon: Icons.gps_fixed, title: title),
       const SizedBox(height: 5),
-      const Text('ترتيب محفوظ داخل التطبيق ويظل متاحًا بدون إنترنت.', style: TextStyle(color: Colors.white60, fontSize: 11)),
+      const Text(
+        'ترتيب محفوظ داخل التطبيق ويظل متاحًا بدون إنترنت.',
+        style: TextStyle(color: Colors.white60, fontSize: 11),
+      ),
       const SizedBox(height: 10),
       for (final record in records) ...[
         SectionCard(
           child: Row(
             children: [
-              SizedBox(width: 26, child: Text('${record.rank}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.w900))),
+              SizedBox(
+                width: 26,
+                child: Text(
+                  '${record.rank}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
-              _HistoryPortrait(image: record.image, size: 48, fallback: record.name),
+              _HistoryPortrait(
+                image: record.image,
+                size: 48,
+                fallback: record.name,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(record.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-                    Text('${record.goals} هدف', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                    Text(
+                      record.name,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    Text(
+                      '${record.goals} هدف${record.assists > 0 ? ' · ${record.assists} تمريرة حاسمة' : ''}',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Column(
                 children: [
-                  Text('${record.apps}', style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w900)),
-                  Text(statLabel, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                  Text(
+                    '${record.apps}',
+                    style: const TextStyle(
+                      color: kPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    statLabel,
+                    style: const TextStyle(color: Colors.white54, fontSize: 10),
+                  ),
                 ],
               ),
             ],
@@ -742,7 +1114,10 @@ class _LegendsSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(icon: Icons.star_outline, title: 'أساطير النسور الخضراء'),
+      const SectionTitle(
+        icon: Icons.star_outline,
+        title: 'أساطير النسور الخضراء',
+      ),
       const SizedBox(height: 10),
       for (final legend in historyLegends) ...[
         _HistoryPersonTile(
@@ -764,16 +1139,28 @@ class _IdentitySection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(icon: Icons.verified_outlined, title: 'الهوية والمنشآت'),
+      const SectionTitle(
+        icon: Icons.verified_outlined,
+        title: 'الهوية والمنشآت',
+      ),
       const SizedBox(height: 10),
       for (final item in historyIdentity) ...[
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item.title, style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w900)),
+              Text(
+                item.title,
+                style: const TextStyle(
+                  color: kPrimary,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 6),
-              Text(item.body, style: const TextStyle(color: Colors.white70, height: 1.6)),
+              Text(
+                item.body,
+                style: const TextStyle(color: Colors.white70, height: 1.6),
+              ),
             ],
           ),
         ),
@@ -785,12 +1172,22 @@ class _IdentitySection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: Image.asset(historyAsset('مدينة بورسعيد.webp'), height: 170, width: double.infinity, fit: BoxFit.cover),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+              child: Image.asset(
+                historyAsset('مدينة بورسعيد.webp'),
+                height: 170,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
             const Padding(
               padding: EdgeInsets.all(12),
-              child: Text('بورسعيد — مدينة النادي وجمهوره', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              child: Text(
+                'بورسعيد — مدينة النادي وجمهوره',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
             ),
           ],
         ),
@@ -806,9 +1203,19 @@ class _IdentitySection extends StatelessWidget {
               ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                title: Text(source['label']!, style: const TextStyle(fontSize: 12)),
-                trailing: const Icon(Icons.open_in_new, size: 15, color: kPrimary),
-                onTap: () => launchUrl(Uri.parse(source['url']!), mode: LaunchMode.externalApplication),
+                title: Text(
+                  source['label']!,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: const Icon(
+                  Icons.open_in_new,
+                  size: 15,
+                  color: kPrimary,
+                ),
+                onTap: () => launchUrl(
+                  Uri.parse(source['url']!),
+                  mode: LaunchMode.externalApplication,
+                ),
               ),
           ],
         ),
@@ -818,7 +1225,12 @@ class _IdentitySection extends StatelessWidget {
 }
 
 class _HistoryPersonTile extends StatelessWidget {
-  const _HistoryPersonTile({required this.title, required this.subtitle, this.note, this.image});
+  const _HistoryPersonTile({
+    required this.title,
+    required this.subtitle,
+    this.note,
+    this.image,
+  });
 
   final String title;
   final String subtitle;
@@ -838,10 +1250,20 @@ class _HistoryPersonTile extends StatelessWidget {
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 3),
-              Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+              Text(
+                subtitle,
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
+              ),
               if (note != null) ...[
                 const SizedBox(height: 5),
-                Text(note!, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.45)),
+                Text(
+                  note!,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    height: 1.45,
+                  ),
+                ),
               ],
             ],
           ),
@@ -852,7 +1274,11 @@ class _HistoryPersonTile extends StatelessWidget {
 }
 
 class _HistoryPortrait extends StatelessWidget {
-  const _HistoryPortrait({this.image, required this.size, required this.fallback});
+  const _HistoryPortrait({
+    this.image,
+    required this.size,
+    required this.fallback,
+  });
 
   final String? image;
   final double size;
@@ -876,7 +1302,14 @@ class _HistoryPortrait extends StatelessWidget {
                 ),
               ),
             )
-          : Image.asset(historyAsset(image!), fit: BoxFit.cover),
+          : Image.asset(
+              historyAsset(image!),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: kPrimary.withOpacity(.14),
+                child: const Icon(Icons.person, color: kPrimary),
+              ),
+            ),
     ),
   );
 }
@@ -894,7 +1327,14 @@ class _HistoryPill extends StatelessWidget {
       color: muted ? kCardAlt : kGold.withOpacity(.14),
       borderRadius: BorderRadius.circular(8),
     ),
-    child: Text(text, style: TextStyle(color: muted ? Colors.white60 : kGold, fontSize: 10, fontWeight: FontWeight.w800)),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: muted ? Colors.white60 : kGold,
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
   );
 }
 
@@ -993,6 +1433,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 14),
+        OutlinedButton.icon(
+          onPressed: () async {
+            await OfflineCache.instance.clear();
+            if (context.mounted)
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('تم مسح البيانات المحفوظة')),
+              );
+          },
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('مسح البيانات المحفوظة'),
         ),
         const SizedBox(height: 14),
         SectionCard(
@@ -1141,9 +1593,15 @@ class MatchDetailScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       if (detail.stadium != null)
-                        _MatchMeta(icon: Icons.stadium_outlined, text: detail.stadium!),
+                        _MatchMeta(
+                          icon: Icons.stadium_outlined,
+                          text: detail.stadium!,
+                        ),
                       if (detail.referee != null)
-                        _MatchMeta(icon: Icons.sports_outlined, text: detail.referee!),
+                        _MatchMeta(
+                          icon: Icons.sports_outlined,
+                          text: detail.referee!,
+                        ),
                     ],
                   ),
                 ),
@@ -1207,7 +1665,9 @@ class _EventsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => events.isEmpty
-      ? const _DetailTabPlaceholder(message: 'لا توجد أحداث مسجلة لهذه المباراة.')
+      ? const _DetailTabPlaceholder(
+          message: 'لا توجد أحداث مسجلة لهذه المباراة.',
+        )
       : ListView(
           padding: const EdgeInsets.only(top: 12),
           children: [
@@ -1219,8 +1679,14 @@ class _EventsTab extends StatelessWidget {
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
                         radius: 17,
-                        backgroundColor: _eventColor(event.type).withOpacity(.16),
-                        child: Icon(_eventIcon(event.type), size: 17, color: _eventColor(event.type)),
+                        backgroundColor: _eventColor(
+                          event.type,
+                        ).withOpacity(.16),
+                        child: Icon(
+                          _eventIcon(event.type),
+                          size: 17,
+                          color: _eventColor(event.type),
+                        ),
                       ),
                       title: Text(
                         _eventLabel(event.type),
@@ -1233,13 +1699,19 @@ class _EventsTab extends StatelessWidget {
                           if (event.teamName != null) event.teamName!,
                           if (event.text != null) event.text!,
                         ].join(' · '),
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 11,
+                        ),
                       ),
                       trailing: Text(
                         event.minute == null
                             ? '—'
                             : '${event.minute}${event.addedTime == null ? '' : '+${event.addedTime}'}’',
-                        style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.w900),
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                     if (event != events.last) const Divider(height: 1),
@@ -1258,7 +1730,9 @@ class _StatsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => stats.isEmpty
-      ? const _DetailTabPlaceholder(message: 'الإحصائيات غير متاحة لهذه المباراة.')
+      ? const _DetailTabPlaceholder(
+          message: 'الإحصائيات غير متاحة لهذه المباراة.',
+        )
       : ListView(
           padding: const EdgeInsets.only(top: 12),
           children: [
@@ -1266,15 +1740,30 @@ class _StatsTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SectionTitle(icon: Icons.bar_chart, title: 'إحصائيات المباراة'),
+                  const SectionTitle(
+                    icon: Icons.bar_chart,
+                    title: 'إحصائيات المباراة',
+                  ),
                   const SizedBox(height: 14),
                   for (final stat in stats) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('${stat.home}${stat.unit == 'percent' ? '%' : ''}', style: const TextStyle(fontWeight: FontWeight.w900)),
-                        Text(stat.label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                        Text('${stat.away}${stat.unit == 'percent' ? '%' : ''}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                        Text(
+                          '${stat.home}${stat.unit == 'percent' ? '%' : ''}',
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        Text(
+                          stat.label,
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 11,
+                          ),
+                        ),
+                        Text(
+                          '${stat.away}${stat.unit == 'percent' ? '%' : ''}',
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -1333,7 +1822,9 @@ class _CommentaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => commentary.isEmpty
-      ? const _DetailTabPlaceholder(message: 'لا يوجد تعليق متاح لهذه المباراة.')
+      ? const _DetailTabPlaceholder(
+          message: 'لا يوجد تعليق متاح لهذه المباراة.',
+        )
       : ListView.separated(
           padding: const EdgeInsets.only(top: 12),
           itemCount: commentary.length,
@@ -1345,15 +1836,30 @@ class _CommentaryTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                    decoration: BoxDecoration(color: kCardAlt, borderRadius: BorderRadius.circular(7)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: kCardAlt,
+                      borderRadius: BorderRadius.circular(7),
+                    ),
                     child: Text(
                       item['minute'] == null ? '—' : '${item['minute']}’',
-                      style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w900),
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(item['text']?.toString() ?? '—', style: const TextStyle(height: 1.5))),
+                  Expanded(
+                    child: Text(
+                      item['text']?.toString() ?? '—',
+                      style: const TextStyle(height: 1.5),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -1379,7 +1885,10 @@ class _StatBar extends StatelessWidget {
         height: 8,
         child: Row(
           children: [
-            Flexible(flex: homeFlex, child: Container(color: kPrimary)),
+            Flexible(
+              flex: homeFlex,
+              child: Container(color: kPrimary),
+            ),
             Expanded(child: Container(color: kGold.withOpacity(.6))),
           ],
         ),
@@ -1405,11 +1914,17 @@ class _LineupBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final keeper = players.isEmpty ? null : players.firstWhere(
-      (player) => player.position.contains('حارس') || player.position.toLowerCase().contains('goal'),
-      orElse: () => players.first,
-    );
-    final outfield = players.where((player) => player.id != keeper?.id).toList();
+    final keeper = players.isEmpty
+        ? null
+        : players.firstWhere(
+            (player) =>
+                player.position.contains('حارس') ||
+                player.position.toLowerCase().contains('goal'),
+            orElse: () => players.first,
+          );
+    final outfield = players
+        .where((player) => player.id != keeper?.id)
+        .toList();
     final rows = _formationRows(formation, outfield.length);
     var offset = 0;
     final lines = <List<LineupPlayer>>[
@@ -1430,8 +1945,20 @@ class _LineupBoard extends StatelessWidget {
               children: [
                 TeamLogo(url: team.crestUrl, size: 28),
                 const SizedBox(width: 8),
-                Expanded(child: Text(team.name, style: const TextStyle(fontWeight: FontWeight.w900))),
-                if (formation != null) Text(formation!, style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w900)),
+                Expanded(
+                  child: Text(
+                    team.name,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                if (formation != null)
+                  Text(
+                    formation!,
+                    style: const TextStyle(
+                      color: kPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1440,7 +1967,9 @@ class _LineupBoard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              gradient: const LinearGradient(colors: [Color(0xff14563b), Color(0xff0c3929)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xff14563b), Color(0xff0c3929)],
+              ),
               border: Border.all(color: kPrimary.withOpacity(.25)),
             ),
             child: Column(
@@ -1462,7 +1991,10 @@ class _LineupBoard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: Text('المدرب: $coach', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                child: Text(
+                  'المدرب: $coach',
+                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                ),
               ),
             ),
           if (bench.isNotEmpty)
@@ -1470,7 +2002,10 @@ class _LineupBoard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: Text('البدلاء: ${bench.map((player) => player.name).join('، ')}', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                child: Text(
+                  'البدلاء: ${bench.map((player) => player.name).join('، ')}',
+                  style: const TextStyle(color: Colors.white54, fontSize: 10),
+                ),
               ),
             ),
         ],
@@ -1492,11 +2027,24 @@ class _PitchPlayer extends StatelessWidget {
         CircleAvatar(
           radius: 18,
           backgroundColor: kPrimary.withOpacity(.18),
-          backgroundImage: player.photoUrl == null ? null : NetworkImage(player.photoUrl!),
-          child: player.photoUrl == null ? Text('${player.number ?? '—'}', style: const TextStyle(fontSize: 11, color: Colors.white)) : null,
+          backgroundImage: player.photoUrl == null
+              ? null
+              : NetworkImage(player.photoUrl!),
+          child: player.photoUrl == null
+              ? Text(
+                  '${player.number ?? '—'}',
+                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                )
+              : null,
         ),
         const SizedBox(height: 3),
-        Text(player.name.split(' ').take(2).join(' '), maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
+        Text(
+          player.name.split(' ').take(2).join(' '),
+          maxLines: 2,
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+        ),
       ],
     ),
   );
@@ -1509,7 +2057,8 @@ List<int> _formationRows(String? formation, int count) {
       .map(int.parse)
       .where((value) => value > 0 && value < 7)
       .toList();
-  if (parsed.length >= 2 && parsed.reduce((a, b) => a + b) == count) return parsed;
+  if (parsed.length >= 2 && parsed.reduce((a, b) => a + b) == count)
+    return parsed;
   if (count == 10) return const [4, 3, 3];
   final rows = <int>[];
   var remaining = count;
@@ -1538,7 +2087,8 @@ String _eventLabel(String raw) {
 IconData _eventIcon(String raw) {
   final type = raw.toLowerCase();
   if (type.contains('goal')) return Icons.sports_soccer;
-  if (type.contains('yellow') || type.contains('red')) return Icons.style_outlined;
+  if (type.contains('yellow') || type.contains('red'))
+    return Icons.style_outlined;
   if (type.contains('substitution')) return Icons.swap_horiz;
   if (type.contains('injury')) return Icons.healing_outlined;
   if (type.contains('lineup')) return Icons.groups_outlined;
@@ -1563,6 +2113,214 @@ class _DetailTabPlaceholder extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.all(20),
       child: Text(message, style: const TextStyle(color: Colors.white60)),
+    ),
+  );
+}
+
+class SourceNote extends StatelessWidget {
+  const SourceNote({super.key});
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 12),
+    child: Row(
+      children: [
+        Icon(Icons.radio_button_checked, size: 13, color: kPrimary),
+        SizedBox(width: 6),
+        Text(
+          'المصدر: بيانات مباشرة، وتُستخدم النسخة المحفوظة عند انقطاع الاتصال',
+          style: TextStyle(color: Colors.white54, fontSize: 10),
+        ),
+      ],
+    ),
+  );
+}
+
+class PlayerDetailScreen extends StatelessWidget {
+  const PlayerDetailScreen({
+    super.key,
+    required this.api,
+    required this.playerId,
+  });
+  final ApiClient api;
+  final int playerId;
+  String text(dynamic v) => v?.toString() ?? '—';
+  Widget info(String label, dynamic value) => value == null
+      ? const SizedBox.shrink()
+      : ListTile(
+          dense: true,
+          title: Text(label, style: const TextStyle(color: Colors.white54)),
+          trailing: Text(
+            text(value),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        );
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('بيانات اللاعب')),
+    body: FutureBuilder<Map<String, dynamic>>(
+      future: api.getPlayerDetail(playerId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError || snapshot.data == null)
+          return const ErrorState(title: 'تعذر تحميل بيانات اللاعب حاليًا');
+        final root = snapshot.data!;
+        final p = ((root['player'] as Map?) ?? root).cast<String, dynamic>();
+        final totals = (p['totals'] as List?) ?? const [];
+        final comps = (p['competitions'] as List?) ?? const [];
+        final career = (p['career'] as List?) ?? const [];
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            SectionCard(
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 48,
+                    backgroundImage: p['photoUrl'] != null
+                        ? NetworkImage(text(p['photoUrl']))
+                        : null,
+                    child: p['photoUrl'] == null
+                        ? const Icon(Icons.person, size: 42)
+                        : null,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          text(p['name']),
+                          style: const TextStyle(
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          [
+                            p['position'],
+                            p['club'],
+                          ].where((x) => x != null).join(' · '),
+                          style: const TextStyle(color: Colors.white60),
+                        ),
+                        Wrap(
+                          spacing: 6,
+                          children: [
+                            if (p['shirtNumber'] != null)
+                              Chip(label: Text('#${p['shirtNumber']}')),
+                            if (p['nationality'] != null)
+                              Chip(label: Text(text(p['nationality']))),
+                            if (p['availability'] != null)
+                              Chip(label: Text(text(p['availability']))),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (totals.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: totals
+                    .whereType<Map>()
+                    .map(
+                      (t) => SizedBox(
+                        width: 100,
+                        child: SectionCard(
+                          child: Column(
+                            children: [
+                              Text(
+                                text(t['value']),
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              Text(
+                                text(t['label']),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SectionCard(
+              child: Column(
+                children: [
+                  const SectionTitle(
+                    icon: Icons.badge_outlined,
+                    title: 'بيانات اللاعب',
+                  ),
+                  info('النادي', p['club']),
+                  info('المركز', p['position']),
+                  info('رقم القميص', p['shirtNumber']),
+                  info('الجنسية', p['nationality']),
+                  info('تاريخ الميلاد', p['birthDate']),
+                  info('مكان الميلاد', p['birthPlace']),
+                  info('الحالة', p['availability']),
+                ],
+              ),
+            ),
+            if (comps.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const SectionTitle(
+                icon: Icons.query_stats,
+                title: 'إحصائيات البطولات الحالية',
+              ),
+              ...comps.whereType<Map>().map(
+                (c) => SectionCard(
+                  child: ListTile(
+                    title: Text(text(c['competition'])),
+                    subtitle: Text(
+                      'مشاركات ${text(c['appearances'])} · أهداف ${text(c['goals'])}',
+                    ),
+                    trailing: Text(
+                      '🟨 ${text(c['yellowCards'])}  🟥 ${text(c['redCards'])}',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            if (career.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const SectionTitle(
+                icon: Icons.timeline,
+                title: 'تاريخ الانتقالات',
+              ),
+              ...career.whereType<Map>().map(
+                (c) => SectionCard(
+                  child: ListTile(
+                    leading: TeamLogo(
+                      url: c['toTeamCrestUrl']?.toString(),
+                      size: 34,
+                    ),
+                    title: Text(text(c['toTeam'])),
+                    subtitle: Text(
+                      '${text(c['from'])} ← ${text(c['until'])}${c['contract'] == null ? '' : ' · ${c['contract']}'}',
+                    ),
+                    trailing: c['position'] == null
+                        ? null
+                        : Text(text(c['position'])),
+                  ),
+                ),
+              ),
+            ],
+            const SourceNote(),
+          ],
+        );
+      },
     ),
   );
 }
@@ -1706,9 +2464,7 @@ class PlayerCard extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     clipBehavior: Clip.antiAlias,
     child: InkWell(
-      onTap: () => ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(player.name))),
+      onTap: () => openPlayer(context, player.id),
       child: Column(
         children: [
           Expanded(
@@ -1752,8 +2508,9 @@ class PlayerCard extends StatelessWidget {
 }
 
 class NewsCard extends StatelessWidget {
-  const NewsCard({super.key, required this.item});
+  const NewsCard({super.key, required this.item, this.hero = false});
   final NewsItem item;
+  final bool hero;
 
   @override
   Widget build(BuildContext context) => InkWell(
@@ -1775,7 +2532,7 @@ class NewsCard extends StatelessWidget {
               ),
               child: Image.network(
                 item.imageUrl!,
-                height: 170,
+                height: hero ? 240 : 170,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const SizedBox(height: 12),
@@ -2081,7 +2838,11 @@ class OfflineBanner extends StatelessWidget {
         Expanded(
           child: Text(
             'يرجى الاتصال بالإنترنت للحصول على آخر التحديثات — تعرض الآن آخر نسخة محفوظة.',
-            style: TextStyle(color: kGold, fontSize: 11, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: kGold,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
