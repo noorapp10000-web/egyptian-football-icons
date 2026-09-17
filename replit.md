@@ -1,6 +1,7 @@
-# [Project name]
+# Egyptian Football Icons
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+منصة متابعة المصري البورسعيدي: المباريات والأحداث لحظة بلحظة، الأخبار، اللاعبين،
+الإحصائيات، الترتيب، التشكيلات، وتاريخ النادي، مع تطبيق Flutter وواجهة ويب مساندة.
 
 ## Run & Operate
 
@@ -22,23 +23,36 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `flutter_app/` — تطبيق Flutter الأساسي وواجهاته العربية.
+- `artifacts/api-server/` — API عام تحت `/api` يقرأ البيانات من في الجول ويخزنها مؤقتًا.
+- `artifacts/egyptian-football-hub/` — واجهة ويب مساندة بنفس البيانات والهوية.
+- `artifacts/egyptian-football-hub/src/lib/filgoal.server.ts` — النماذج، القراءة، الكاش،
+  وتوحيد الأحداث والدقائق.
+- `artifacts/egyptian-football-hub/src/lib/match-events.ts` — أنواع الأحداث وتطبيع الدقيقة.
+- `flutter_app/lib/screens/app_shell.dart` — الشاشات والتنقل وتفاصيل المباراة.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- كل البيانات الخارجية تمر من خلال API السيرفر، ولا يتصل تطبيق Flutter بالمصادر الخارجية مباشرة.
+- الأحداث الرسمية تستخدم الدقيقة المطلقة، بينما التعليق الحي قد يعيد عداد الشوط الثاني من 1؛
+  يتم توحيد ذلك قبل إرساله للعميل.
+- الأحداث في تفاصيل المباراة تُعرض داخل عمود الفريق صاحب الحدث، مع عمود منفصل للأحداث العامة.
+- صور الفرق واللاعبين تمر عبر كاش الصور والبيانات تُعاد من الكاش عند فشل المصدر مؤقتًا.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+التطبيق يعرض الرئيسية، المباريات والنتائج، تفاصيل الحدث والتعليق، الإحصائيات،
+التشكيلات على ملعب، قائمة الفريق واللاعبين، الأخبار، جدول الدوري، وتاريخ النادي.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- الحفاظ على ألوان المصري الحالية مع تحسين الوضوح والحركة والأيقونات، والواجهة عربية RTL.
+- عدم خلط أحداث الفريقين في قائمة واحدة، وعدم عرض الدقيقة النسبية للشوط الثاني كما لو كانت مطلقة.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- يجب تشغيل `pnpm install --frozen-lockfile` بعد جلب ملفات الفرع قبل فحص TypeScript.
+- توحيد أي مصدر بيانات جديد عبر `normalizeMatchMinute` و`normalizeCommentaryMinute` قبل عرضه.
 
 ## Pointers
 

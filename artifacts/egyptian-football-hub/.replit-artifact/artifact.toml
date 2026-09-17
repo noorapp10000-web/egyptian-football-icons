@@ -1,0 +1,23 @@
+kind = "web"
+previewPath = "/"
+title = "Egyptian Football Hub"
+description = "تطبيق ويب لمتابعة كرة القدم المصرية، الأخبار، المباريات، الجداول، اللاعبين والتاريخ الرياضي، مع دعم Firebase وتجهيزه للتغليف كتطبيق Android عبر Capacitor."
+version = "1.0.0"
+id = "artifacts/egyptian-football-hub"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22288
+
+[services.development]
+run = "pnpm --filter @workspace/egyptian-football-hub run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/egyptian-football-hub", "run", "build" ]
+run = "pnpm --filter @workspace/egyptian-football-hub run serve"
+
+[services.env]
+PORT = "22288"
+BASE_PATH = "/"
