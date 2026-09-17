@@ -33,7 +33,6 @@ class _AppShellState extends State<AppShell> {
       SquadScreen(api: api),
       NewsScreen(api: api),
       const HistoryScreen(),
-      SettingsScreen(api: api),
     ];
     return Scaffold(
       appBar: AppBar(
@@ -43,21 +42,37 @@ class _AppShellState extends State<AppShell> {
             BrandMark(size: 34),
             SizedBox(width: 10),
             Text(
-              'MASRAWY FAN',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+              'ALMASRY SC',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.1,
+              ),
             ),
           ],
         ),
         actions: [
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 16),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: kPrimary.withOpacity(.13),
-              child: const Icon(
-                Icons.notifications_none,
-                size: 18,
-                color: kPrimary,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('الإعدادات')),
+                    body: SettingsScreen(api: api),
+                  ),
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: kPrimary.withOpacity(.13),
+                child: const Icon(
+                  Icons.notifications_none,
+                  size: 18,
+                  color: kPrimary,
+                ),
               ),
             ),
           ),
@@ -92,8 +107,8 @@ class _AppShellState extends State<AppShell> {
             label: 'المباريات',
           ),
           NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined),
-            selectedIcon: Icon(Icons.list_alt),
+            icon: Icon(Icons.format_list_numbered),
+            selectedIcon: Icon(Icons.format_list_numbered),
             label: 'الترتيب',
           ),
           NavigationDestination(
@@ -107,14 +122,9 @@ class _AppShellState extends State<AppShell> {
             label: 'الأخبار',
           ),
           NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
+            icon: Icon(Icons.account_balance_outlined),
+            selectedIcon: Icon(Icons.account_balance),
             label: 'التاريخ',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'الإعدادات',
           ),
         ],
       ),
@@ -2476,25 +2486,81 @@ class MatchListTile extends StatelessWidget {
       ),
     ),
     child: SectionCard(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: TeamColumn(team: match.homeTeam, compact: true)),
-          Column(
+          Row(
             children: [
+              const Icon(Icons.emoji_events_outlined, size: 14, color: kGold),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  match.competition,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: kGold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              StatusBadge(match: match),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: TeamColumn(team: match.homeTeam, compact: true)),
               Text(
                 match.isPlayed
                     ? '${match.homeScore} - ${match.awayScore}'
                     : 'VS',
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-              const SizedBox(height: 5),
-              StatusBadge(match: match),
+              Expanded(child: TeamColumn(team: match.awayTeam, compact: true)),
             ],
           ),
-          Expanded(child: TeamColumn(team: match.awayTeam, compact: true)),
+          if (match.formattedKickoff != null || match.venue != null) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xff2d4b3e)),
+            const SizedBox(height: 10),
+            if (match.formattedKickoff != null)
+              MetaLine(
+                icon: Icons.calendar_today_outlined,
+                text: match.formattedKickoff!,
+              ),
+            if (match.venue != null) ...[
+              const SizedBox(height: 6),
+              MetaLine(icon: Icons.place_outlined, text: match.venue!),
+            ],
+          ],
         ],
       ),
     ),
+  );
+}
+
+class MetaLine extends StatelessWidget {
+  const MetaLine({super.key, required this.icon, required this.text});
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 13, color: Colors.white38),
+      const SizedBox(width: 7),
+      Expanded(
+        child: Text(
+          text,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.white60, fontSize: 11),
+        ),
+      ),
+    ],
   );
 }
 

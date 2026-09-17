@@ -51,10 +51,26 @@ class Match {
     if (kickoff != null) {
       final parsed = DateTime.tryParse(kickoff!);
       if (parsed != null) {
-        return DateFormat('d MMMM • h:mm a', 'en').format(parsed.toLocal());
+        try {
+          final local = parsed.toLocal();
+          return '${DateFormat('HH:mm').format(local)} - '
+              '${DateFormat('dd-MM-yyyy').format(local)}';
+        } catch (_) {
+          // Never let date formatting break the UI.
+        }
       }
     }
     return _convert24HourToAmPm(kickoffText);
+  }
+
+  String? get formattedDate {
+    final parsed = kickoff == null ? null : DateTime.tryParse(kickoff!);
+    if (parsed == null) return null;
+    try {
+      return DateFormat('dd-MM-yyyy').format(parsed.toLocal());
+    } catch (_) {
+      return null;
+    }
   }
 
   factory Match.fromJson(Map<String, dynamic> json) => Match(
