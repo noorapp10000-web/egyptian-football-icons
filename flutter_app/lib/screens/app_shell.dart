@@ -319,7 +319,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
   Widget build(BuildContext context) => DataPage<List<Match>>(
     title: 'كل المباريات',
     icon: Icons.calendar_month,
-    future: widget.api.getMatches(),
+    load: widget.api.getMatches,
     builder: (matches) {
       final upcoming = matches.where((m) => !m.isPlayed).toList();
       final played = matches.where((m) => m.isPlayed).toList();
@@ -365,101 +365,72 @@ class TableScreen extends StatelessWidget {
   Widget build(BuildContext context) => DataPage<List<Standing>>(
     title: 'جدول الدوري',
     icon: Icons.list_alt,
-    future: api.getStandings(),
+    load: api.getStandings,
     builder: (standings) => ListView(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 28),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 28),
       children: [
         SectionCard(
           padding: EdgeInsets.zero,
           child: Column(
             children: [
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 child: Row(
                   children: [
-                    SizedBox(
-                      width: 34,
-                      child: Text('#', style: TextStyle(color: Colors.white54)),
-                    ),
+                    _StandingCell('#', width: 28, muted: true),
                     Expanded(
                       child: Text(
                         'الفريق',
-                        style: TextStyle(color: Colors.white54),
+                        style: TextStyle(color: Colors.white54, fontSize: 11),
                       ),
                     ),
-                    SizedBox(
-                      width: 150,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('لعب', style: TextStyle(color: Colors.white54)),
-                          Text(
-                            'له/عليه',
-                            style: TextStyle(color: Colors.white54),
-                          ),
-                          Text('+/-', style: TextStyle(color: Colors.white54)),
-                          Text('نقاط', style: TextStyle(color: Colors.white54)),
-                        ],
-                      ),
-                    ),
+                    _StandingCell('ل', muted: true),
+                    _StandingCell('له', muted: true),
+                    _StandingCell('ع', muted: true),
+                    _StandingCell('ف', muted: true),
+                    _StandingCell('ن', width: 34, muted: true),
                   ],
                 ),
               ),
+              const Divider(height: 1),
               ...standings.map(
                 (row) => Container(
                   color: row.isMasry ? kPrimary.withOpacity(.12) : null,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 34,
-                        child: CircleAvatar(
-                          radius: 12,
-                          backgroundColor: row.rank <= 3
-                              ? kGold.withOpacity(.2)
-                              : kCardAlt,
-                          child: Text(
-                            '${row.rank}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: row.rank <= 3 ? kGold : Colors.white70,
-                            ),
-                          ),
-                        ),
-                      ),
+                      _StandingCell('${row.rank}', width: 28, bold: true),
                       Expanded(
                         child: Row(
                           children: [
-                            TeamLogo(url: row.team.crestUrl, size: 28),
-                            const SizedBox(width: 8),
-                            Flexible(
+                            TeamLogo(url: row.team.crestUrl, size: 24),
+                            const SizedBox(width: 6),
+                            Expanded(
                               child: Text(
                                 row.team.name,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
+                                  fontSize: 11,
                                   fontWeight: row.isMasry
                                       ? FontWeight.w900
                                       : FontWeight.w600,
+                                  color: row.isMasry ? kPrimary : null,
                                 ),
                               ),
                             ),
-                            if (row.isMasry) ...[
-                              const SizedBox(width: 6),
-                              const Text(
-                                'المصري',
-                                style: TextStyle(color: kPrimary, fontSize: 10),
-                              ),
-                            ],
                           ],
                         ),
                       ),
-                      Text(
-                        '${row.played}    ${row.points}',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      _StandingCell('${row.played}'),
+                      _StandingCell('${row.goalsFor ?? 0}'),
+                      _StandingCell('${row.goalsAgainst ?? 0}'),
+                      _StandingCell(
+                        (row.goalDifference ?? 0) > 0
+                            ? '+${row.goalDifference}'
+                            : '${row.goalDifference ?? 0}',
                       ),
+                      _StandingCell('${row.points}', width: 34, bold: true),
                     ],
                   ),
                 ),
@@ -467,7 +438,42 @@ class TableScreen extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 8),
+        const Text(
+          'ل: لعب · له: أهداف له · ع: أهداف عليه · ف: فارق الأهداف · ن: نقاط',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white54, fontSize: 9),
+        ),
       ],
+    ),
+  );
+}
+
+class _StandingCell extends StatelessWidget {
+  const _StandingCell(
+    this.value, {
+    this.width = 27,
+    this.bold = false,
+    this.muted = false,
+  });
+
+  final String value;
+  final double width;
+  final bool bold;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: width,
+    child: Text(
+      value,
+      maxLines: 1,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: muted ? Colors.white54 : Colors.white,
+        fontSize: 10,
+        fontWeight: bold ? FontWeight.w900 : FontWeight.w600,
+      ),
     ),
   );
 }
@@ -489,7 +495,7 @@ class SquadScreen extends StatelessWidget {
   Widget build(BuildContext context) => DataPage<List<Player>>(
     title: 'قائمة الفريق',
     icon: Icons.groups,
-    future: api.getSquad(),
+    load: api.getSquad,
     builder: (players) {
       final scorers = [...players]
         ..sort((a, b) => (b.goals ?? 0).compareTo(a.goals ?? 0));
@@ -577,7 +583,7 @@ class NewsScreen extends StatelessWidget {
   Widget build(BuildContext context) => DataPage<List<NewsItem>>(
     title: 'آخر الأخبار',
     icon: Icons.newspaper,
-    future: api.getNews(),
+    load: api.getNews,
     builder: (news) => ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
       children: [
@@ -1085,7 +1091,7 @@ class _RecordsSection extends StatelessWidget {
               Column(
                 children: [
                   Text(
-                    '${record.apps}',
+                    '${statLabel == 'هدف' ? record.goals : record.apps}',
                     style: const TextStyle(
                       color: kPrimary,
                       fontWeight: FontWeight.w900,
@@ -1509,7 +1515,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class MatchDetailScreen extends StatelessWidget {
+class MatchDetailScreen extends StatefulWidget {
   const MatchDetailScreen({
     super.key,
     required this.api,
@@ -1519,15 +1525,36 @@ class MatchDetailScreen extends StatelessWidget {
   final int matchId;
 
   @override
+  State<MatchDetailScreen> createState() => _MatchDetailScreenState();
+}
+
+class _MatchDetailScreenState extends State<MatchDetailScreen> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.api.getMatchDetail(widget.matchId);
+  }
+
+  void _retry() => setState(
+    () => _future = widget.api.getMatchDetail(widget.matchId),
+  );
+
+  @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('تفاصيل المباراة')),
     body: FutureBuilder<Map<String, dynamic>>(
-      future: api.getMatchDetail(matchId),
+      future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting)
           return const LoadingCard();
-        if (snapshot.hasError || snapshot.data == null)
-          return const ErrorCard(message: 'تعذر تحميل تفاصيل المباراة');
+        if (snapshot.hasError || snapshot.data == null) {
+          return ErrorState(
+            title: 'تفاصيل المباراة',
+            onRetry: _retry,
+          );
+        }
         final detail = MatchDetailData.fromJson(snapshot.data!);
         final match = detail.match;
         final timeline = detail.timeline.isNotEmpty
@@ -2324,43 +2351,59 @@ class PlayerDetailScreen extends StatelessWidget {
   );
 }
 
-class DataPage<T> extends StatelessWidget {
+class DataPage<T> extends StatefulWidget {
   const DataPage({
     super.key,
     required this.title,
     required this.icon,
-    required this.future,
+    required this.load,
     required this.builder,
   });
   final String title;
   final IconData icon;
-  final Future<T> future;
+  final Future<T> Function() load;
   final Widget Function(T data) builder;
 
   @override
+  State<DataPage<T>> createState() => _DataPageState<T>();
+}
+
+class _DataPageState<T> extends State<DataPage<T>> {
+  late Future<T> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.load();
+  }
+
+  void _retry() => setState(() => _future = widget.load());
+
+  @override
   Widget build(BuildContext context) => FutureBuilder<T>(
-    future: future,
+    future: _future,
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            SectionTitle(icon: icon, title: title),
+            SectionTitle(icon: widget.icon, title: widget.title),
             const SizedBox(height: 14),
             const LoadingCard(),
           ],
         );
       }
-      if (snapshot.hasError || snapshot.data == null)
-        return ErrorState(title: title);
+      if (snapshot.hasError || snapshot.data == null) {
+        return ErrorState(title: widget.title, onRetry: _retry);
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SectionTitle(icon: icon, title: title),
+            child: SectionTitle(icon: widget.icon, title: widget.title),
           ),
-          Expanded(child: builder(snapshot.data as T)),
+          Expanded(child: widget.builder(snapshot.data as T)),
         ],
       );
     },
@@ -2850,9 +2893,33 @@ class OfflineBanner extends StatelessWidget {
 }
 
 class ErrorState extends StatelessWidget {
-  const ErrorState({super.key, required this.title});
+  const ErrorState({super.key, required this.title, this.onRetry});
   final String title;
+  final VoidCallback? onRetry;
+
   @override
-  Widget build(BuildContext context) =>
-      Center(child: ErrorCard(message: 'تعذر تحميل $title الآن'));
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: SectionCard(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'تعذر تحميل $title الآن',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('إعادة المحاولة'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
 }
