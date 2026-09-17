@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class Team {
   const Team({required this.name, this.crestUrl, this.id});
 
@@ -21,6 +23,7 @@ class Match {
     required this.statusText,
     required this.homeTeam,
     required this.awayTeam,
+    this.kickoff,
     this.kickoffText,
     this.homeScore,
     this.awayScore,
@@ -34,6 +37,7 @@ class Match {
   final String statusText;
   final Team homeTeam;
   final Team awayTeam;
+  final String? kickoff;
   final String? kickoffText;
   final int? homeScore;
   final int? awayScore;
@@ -41,6 +45,17 @@ class Match {
 
   bool get isPlayed => homeScore != null && awayScore != null;
   bool get isLive => status == 'live';
+
+  String? get formattedKickoff {
+    if (kickoff == null && kickoffText == null) return null;
+    if (kickoff != null) {
+      final parsed = DateTime.tryParse(kickoff!);
+      if (parsed != null) {
+        return DateFormat('d MMMM • h:mm a', 'en').format(parsed.toLocal());
+      }
+    }
+    return _convert24HourToAmPm(kickoffText);
+  }
 
   factory Match.fromJson(Map<String, dynamic> json) => Match(
     id: json['id'] as String? ?? '${json['matchId']}',
@@ -55,10 +70,187 @@ class Match {
       (json['awayTeam'] as Map?)?.cast<String, dynamic>() ?? const {},
     ),
     kickoffText: json['kickoffText'] as String?,
+    kickoff: json['kickoff'] as String?,
     homeScore: (json['homeScore'] as num?)?.toInt(),
     awayScore: (json['awayScore'] as num?)?.toInt(),
     venue: json['venue'] as String?,
   );
+}
+
+String? _convert24HourToAmPm(String? value) {
+  if (value == null || value.isEmpty) return value;
+  final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(value);
+  if (match == null) return value;
+  final hour = int.tryParse(match.group(1)!) ?? 0;
+  final minute = match.group(2)!;
+  final suffix = hour >= 12 ? 'PM' : 'AM';
+  final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+  return value.replaceFirst(match.group(0)!, '$displayHour:$minute $suffix');
+}
+
+class MatchEventModel {
+  const MatchEventModel({
+    required this.id,
+    required this.type,
+    this.minute,
+    this.addedTime,
+    this.teamName,
+    this.player,
+    this.relatedPlayer,
+    this.text,
+  });
+
+  final int id;
+  final String type;
+  final int? minute;
+  final int? addedTime;
+  final String? teamName;
+  final String? player;
+  final String? relatedPlayer;
+  final String? text;
+
+  factory MatchEventModel.fromJson(Map<String, dynamic> json) => MatchEventModel(
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    type: json['type']?.toString() ?? '',
+    minute: (json['minute'] as num?)?.toInt(),
+    addedTime: (json['addedTime'] as num?)?.toInt(),
+    teamName: json['teamName']?.toString(),
+    player: json['player']?.toString(),
+    relatedPlayer: json['relatedPlayer']?.toString(),
+    text: json['text']?.toString(),
+  );
+}
+
+class LineupPlayer {
+  const LineupPlayer({
+    required this.id,
+    required this.name,
+    required this.position,
+    this.number,
+    this.photoUrl,
+    this.isCaptain = false,
+    this.isSpare = false,
+  });
+
+  final int id;
+  final String name;
+  final String position;
+  final int? number;
+  final String? photoUrl;
+  final bool isCaptain;
+  final bool isSpare;
+
+  factory LineupPlayer.fromJson(Map<String, dynamic> json) => LineupPlayer(
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: json['name']?.toString() ?? '—',
+    position: json['position']?.toString() ?? '—',
+    number: (json['number'] as num?)?.toInt(),
+    photoUrl: json['photoUrl']?.toString(),
+    isCaptain: json['isCaptain'] == true,
+    isSpare: json['isSpare'] == true,
+  );
+}
+
+class MatchStatRow {
+  const MatchStatRow({
+    required this.label,
+    required this.home,
+    required this.away,
+    required this.unit,
+  });
+
+  final String label;
+  final int home;
+  final int away;
+  final String unit;
+
+  factory MatchStatRow.fromJson(Map<String, dynamic> json) => MatchStatRow(
+    label: json['label']?.toString() ?? '',
+    home: (json['home'] as num?)?.toInt() ?? 0,
+    away: (json['away'] as num?)?.toInt() ?? 0,
+    unit: json['unit']?.toString() ?? 'count',
+  );
+}
+
+class MatchDetailData {
+  const MatchDetailData({
+    required this.match,
+    required this.events,
+    required this.timeline,
+    required this.commentary,
+    required this.homeLineup,
+    required this.awayLineup,
+    required this.homeBench,
+    required this.awayBench,
+    required this.stats,
+    this.homeCoach,
+    this.awayCoach,
+    this.homeFormation,
+    this.awayFormation,
+    this.stadium,
+    this.referee,
+  });
+
+  final Match match;
+  final List<MatchEventModel> events;
+  final List<MatchEventModel> timeline;
+  final List<Map<String, dynamic>> commentary;
+  final List<LineupPlayer> homeLineup;
+  final List<LineupPlayer> awayLineup;
+  final List<LineupPlayer> homeBench;
+  final List<LineupPlayer> awayBench;
+  final List<MatchStatRow> stats;
+  final String? homeCoach;
+  final String? awayCoach;
+  final String? homeFormation;
+  final String? awayFormation;
+  final String? stadium;
+  final String? referee;
+
+  factory MatchDetailData.fromJson(Map<String, dynamic> json) {
+    final raw = (json['match'] as Map?)?.cast<String, dynamic>() ?? json;
+    List<Map<String, dynamic>> list(String key) => (raw[key] as List?)
+        ?.whereType<Map>()
+        .map((item) => item.cast<String, dynamic>())
+        .toList() ?? const [];
+    final lineups = (raw['lineups'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final stats = (raw['stats'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return MatchDetailData(
+      match: Match.fromJson(raw),
+      events: list('events').map(MatchEventModel.fromJson).toList(),
+      timeline: list('timeline').map(MatchEventModel.fromJson).toList(),
+      commentary: list('commentary'),
+      homeLineup: _lineup(lineups['home']),
+      awayLineup: _lineup(lineups['away']),
+      homeBench: _lineup(lineups['homeBench']),
+      awayBench: _lineup(lineups['awayBench']),
+      stats: [
+        if (stats['possession'] is Map)
+          MatchStatRow(
+            label: 'الاستحواذ',
+            home: ((stats['possession'] as Map)['home'] as num?)?.toInt() ?? 0,
+            away: ((stats['possession'] as Map)['away'] as num?)?.toInt() ?? 0,
+            unit: 'percent',
+          ),
+        ...((stats['rows'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((item) => MatchStatRow.fromJson(item.cast<String, dynamic>())),
+      ],
+      homeCoach: raw['homeCoach']?.toString(),
+      awayCoach: raw['awayCoach']?.toString(),
+      homeFormation: raw['homeFormation']?.toString(),
+      awayFormation: raw['awayFormation']?.toString(),
+      stadium: raw['stadium']?.toString(),
+      referee: raw['referee']?.toString(),
+    );
+  }
+
+  static List<LineupPlayer> _lineup(dynamic value) => value is List
+      ? value
+          .whereType<Map>()
+          .map((item) => LineupPlayer.fromJson(item.cast<String, dynamic>()))
+          .toList()
+      : const [];
 }
 
 class Standing {

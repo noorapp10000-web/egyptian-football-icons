@@ -6,7 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme.dart';
 import '../models/football_models.dart';
+import '../models/history_content.dart';
 import '../services/api_client.dart';
+import '../services/offline_cache.dart';
 import '../widgets/brand_mark.dart';
 
 const teamCrest = 'assets/images/team_crest.png';
@@ -61,7 +63,17 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
-      body: IndexedStack(index: index, children: pages),
+      body: Column(
+        children: [
+          ValueListenableBuilder<bool>(
+            valueListenable: offlineState,
+            builder: (_, offline, __) => offline
+                ? const OfflineBanner()
+                : const SizedBox.shrink(),
+          ),
+          Expanded(child: IndexedStack(index: index, children: pages)),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
         onDestinationSelected: (value) => setState(() => index = value),
@@ -386,14 +398,34 @@ class NewsScreen extends StatelessWidget {
   );
 }
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  int selected = 0;
+
+  static const tabs = [
+    ('الحكاية', Icons.history),
+    ('البطولات', Icons.emoji_events_outlined),
+    ('مسار الرابطة', Icons.route),
+    ('المدربون', Icons.manage_accounts_outlined),
+    ('الرؤساء', Icons.workspace_premium_outlined),
+    ('الهدافون', Icons.gps_fixed),
+    ('الأساطير', Icons.star_outline),
+    ('الأكثر مشاركة', Icons.groups_outlined),
+    ('الهوية', Icons.verified_outlined),
+  ];
 
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
     children: [
       const SectionCard(
+        gradient: true,
         child: Row(
           children: [
             BrandMark(size: 62),
@@ -422,33 +454,447 @@ class HistoryScreen extends StatelessWidget {
           StatChip(value: '1', label: 'كأس الرابطة'),
         ],
       ),
-      const SizedBox(height: 22),
+      const SizedBox(height: 18),
+      Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        children: [
+          for (var i = 0; i < tabs.length; i++)
+            ChoiceChip(
+              avatar: Icon(tabs[i].$2, size: 15),
+              label: Text(tabs[i].$1),
+              selected: selected == i,
+              onSelected: (_) => setState(() => selected = i),
+              selectedColor: kPrimary,
+              labelStyle: TextStyle(
+                color: selected == i ? const Color(0xff092017) : Colors.white70,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 20),
+      _content(),
+    ],
+  );
+
+  Widget _content() => switch (selected) {
+    0 => const _TimelineSection(),
+    1 => const _HonoursSection(),
+    2 => const _CupPathSection(),
+    3 => const _CoachesSection(),
+    4 => const _PresidentsSection(),
+    5 => const _RecordsSection(title: 'أفضل الهدافين في التاريخ', records: historyTopScorers, statLabel: 'هدف'),
+    6 => const _LegendsSection(),
+    7 => const _RecordsSection(title: 'الأكثر مشاركة في تاريخ النادي', records: historyAppearances, statLabel: 'مباراة'),
+    _ => const _IdentitySection(),
+  };
+}
+
+class _TimelineSection extends StatelessWidget {
+  const _TimelineSection();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
       const SectionTitle(icon: Icons.timeline, title: 'الخط الزمني'),
       const SizedBox(height: 10),
-      ...const [
-        HistoryEntry(
-          year: '1920',
-          title: 'تأسيس النادي المصري',
-          body:
-              'انطلق النادي من قلب بورسعيد ليصبح صوت المدينة وواحدًا من أقدم أندية مصر.',
+      for (final item in historyTimeline) ...[
+        SectionCard(
+          gradient: item.gold,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(item.year, style: const TextStyle(color: kGold, fontWeight: FontWeight.w900)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w900))),
+                ],
+              ),
+              if (item.image != null) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    historyAsset(item.image!),
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(item.body, style: const TextStyle(color: Colors.white70, height: 1.65)),
+            ],
+          ),
         ),
-        HistoryEntry(
-          year: '1933',
-          title: 'أول لقب دوري القناة',
-          body: 'بدأت مسيرة البطولات المحلية وترسخت هوية الفريق الأخضر.',
-        ),
-        HistoryEntry(
-          year: '1998',
-          title: 'نهائي كأس مصر',
-          body: 'محطات تاريخية صنعت علاقة خاصة بين النادي وجماهيره.',
-        ),
-        HistoryEntry(
-          year: '2025',
-          title: 'كأس الرابطة',
-          body: 'عودة جديدة إلى منصات التتويج وطموح مستمر للمستقبل.',
-        ),
+        const SizedBox(height: 10),
       ],
     ],
+  );
+}
+
+class _HonoursSection extends StatelessWidget {
+  const _HonoursSection();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionTitle(icon: Icons.emoji_events_outlined, title: 'خزانة البطولات'),
+      const SizedBox(height: 10),
+      for (final honour in historyHonours) ...[
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text(honour.title, style: const TextStyle(fontWeight: FontWeight.w900))),
+                  Text('${honour.wins.length}× بطل', style: const TextStyle(color: kGold, fontWeight: FontWeight.w800)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [for (final win in honour.wins) _HistoryPill(text: win)],
+              ),
+              if (honour.runnersUp.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                const Text('الوصافة', style: TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 5),
+                Wrap(
+                  spacing: 6,
+                  children: [for (final year in honour.runnersUp) _HistoryPill(text: year, muted: true)],
+                ),
+              ],
+              if (honour.note != null) ...[
+                const SizedBox(height: 10),
+                Text(honour.note!, style: const TextStyle(color: kPrimary, fontSize: 11, fontWeight: FontWeight.w800)),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+    ],
+  );
+}
+
+class _CupPathSection extends StatelessWidget {
+  const _CupPathSection();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionTitle(icon: Icons.route, title: 'مسار كأس عاصمة مصر 2026'),
+      const SizedBox(height: 10),
+      const SectionCard(
+        child: Text(
+          'من دور المجموعات إلى النهائي، سجل المصري مشوارًا قويًا انتهى بالفوز على إنبي 3–0 والتتويج بالكأس.',
+          style: TextStyle(color: Colors.white70, height: 1.6),
+        ),
+      ),
+      const SizedBox(height: 10),
+      for (final item in const [
+        ('دور المجموعات', 'نتائج متوازنة وتأهل مستحق'),
+        ('نصف النهائي', 'عبور صعب أمام منافس قوي'),
+        ('النهائي · 8 يونيو 2026', 'المصري 3 — 0 إنبي'),
+      ]) ...[
+        SectionCard(
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: kPrimary),
+              const SizedBox(width: 10),
+              Expanded(child: Text(item.$1, style: const TextStyle(fontWeight: FontWeight.w900))),
+              Text(item.$2, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+      SectionCard(
+        padding: EdgeInsets.zero,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: SizedBox(
+            height: 170,
+            child: PageView(
+              children: [
+                for (final image in historyGallery)
+                  Image.asset(historyAsset(image), fit: BoxFit.cover),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _CoachesSection extends StatelessWidget {
+  const _CoachesSection();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionTitle(icon: Icons.manage_accounts_outlined, title: 'تسلسل المدربين'),
+      const SizedBox(height: 5),
+      const Text(
+        'فترات تدريبية موثقة من بوشكاش 1979 حتى اليوم، مع الصور المحلية المتاحة.',
+        style: TextStyle(color: Colors.white60, fontSize: 11),
+      ),
+      const SizedBox(height: 10),
+      for (final coach in historyCoaches) ...[
+        _HistoryPersonTile(
+          title: coach.name,
+          subtitle: '${coach.from} — ${coach.to}',
+          note: '${coach.matches} مباراة · ${coach.points} نقطة/مباراة',
+          image: coach.image,
+        ),
+        const SizedBox(height: 8),
+      ],
+    ],
+  );
+}
+
+class _PresidentsSection extends StatelessWidget {
+  const _PresidentsSection();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionTitle(icon: Icons.workspace_premium_outlined, title: 'تسلسل رؤساء النادي'),
+      const SizedBox(height: 5),
+      const Text('من أحمد حسني 1920 إلى كامل أبو علي — فترات رئاسة موثقة.', style: TextStyle(color: Colors.white60, fontSize: 11)),
+      const SizedBox(height: 10),
+      for (final president in historyPresidents) ...[
+        _HistoryPersonTile(
+          title: president.name,
+          subtitle: '${president.from} — ${president.to}',
+          note: president.note,
+          image: president.image,
+        ),
+        const SizedBox(height: 8),
+      ],
+    ],
+  );
+}
+
+class _RecordsSection extends StatelessWidget {
+  const _RecordsSection({required this.title, required this.records, required this.statLabel});
+
+  final String title;
+  final List<HistoryRecord> records;
+  final String statLabel;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SectionTitle(icon: Icons.gps_fixed, title: title),
+      const SizedBox(height: 5),
+      const Text('ترتيب محفوظ داخل التطبيق ويظل متاحًا بدون إنترنت.', style: TextStyle(color: Colors.white60, fontSize: 11)),
+      const SizedBox(height: 10),
+      for (final record in records) ...[
+        SectionCard(
+          child: Row(
+            children: [
+              SizedBox(width: 26, child: Text('${record.rank}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.w900))),
+              const SizedBox(width: 8),
+              _HistoryPortrait(image: record.image, size: 48, fallback: record.name),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(record.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                    Text('${record.goals} هدف', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                  ],
+                ),
+              ),
+              Column(
+                children: [
+                  Text('${record.apps}', style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w900)),
+                  Text(statLabel, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    ],
+  );
+}
+
+class _LegendsSection extends StatelessWidget {
+  const _LegendsSection();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionTitle(icon: Icons.star_outline, title: 'أساطير النسور الخضراء'),
+      const SizedBox(height: 10),
+      for (final legend in historyLegends) ...[
+        _HistoryPersonTile(
+          title: legend.name,
+          subtitle: '${legend.role} · ${legend.era}',
+          note: legend.note,
+          image: legend.image,
+        ),
+        const SizedBox(height: 8),
+      ],
+    ],
+  );
+}
+
+class _IdentitySection extends StatelessWidget {
+  const _IdentitySection();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionTitle(icon: Icons.verified_outlined, title: 'الهوية والمنشآت'),
+      const SizedBox(height: 10),
+      for (final item in historyIdentity) ...[
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.title, style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              Text(item.body, style: const TextStyle(color: Colors.white70, height: 1.6)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+      SectionCard(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: Image.asset(historyAsset('مدينة بورسعيد.webp'), height: 170, width: double.infinity, fit: BoxFit.cover),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text('بورسعيد — مدينة النادي وجمهوره', style: TextStyle(color: Colors.white60, fontSize: 11)),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 10),
+      SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionTitle(icon: Icons.open_in_new, title: 'المصادر'),
+            const SizedBox(height: 8),
+            for (final source in historySources)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(source['label']!, style: const TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.open_in_new, size: 15, color: kPrimary),
+                onTap: () => launchUrl(Uri.parse(source['url']!), mode: LaunchMode.externalApplication),
+              ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _HistoryPersonTile extends StatelessWidget {
+  const _HistoryPersonTile({required this.title, required this.subtitle, this.note, this.image});
+
+  final String title;
+  final String subtitle;
+  final String? note;
+  final String? image;
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _HistoryPortrait(image: image, size: 54, fallback: title),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 3),
+              Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+              if (note != null) ...[
+                const SizedBox(height: 5),
+                Text(note!, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.45)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HistoryPortrait extends StatelessWidget {
+  const _HistoryPortrait({this.image, required this.size, required this.fallback});
+
+  final String? image;
+  final double size;
+  final String fallback;
+
+  @override
+  Widget build(BuildContext context) => ClipOval(
+    child: SizedBox(
+      width: size,
+      height: size,
+      child: image == null
+          ? Container(
+              color: kPrimary.withOpacity(.14),
+              child: Center(
+                child: Text(
+                  fallback.length > 2 ? fallback.substring(0, 2) : fallback,
+                  style: const TextStyle(
+                    color: kPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            )
+          : Image.asset(historyAsset(image!), fit: BoxFit.cover),
+    ),
+  );
+}
+
+class _HistoryPill extends StatelessWidget {
+  const _HistoryPill({required this.text, this.muted = false});
+
+  final String text;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: muted ? kCardAlt : kGold.withOpacity(.14),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(text, style: TextStyle(color: muted ? Colors.white60 : kGold, fontSize: 10, fontWeight: FontWeight.w800)),
   );
 }
 
@@ -631,87 +1077,492 @@ class MatchDetailScreen extends StatelessWidget {
           return const LoadingCard();
         if (snapshot.hasError || snapshot.data == null)
           return const ErrorCard(message: 'تعذر تحميل تفاصيل المباراة');
-        final json = snapshot.data!;
-        final match = Match.fromJson(
-          (json['match'] as Map?)?.cast<String, dynamic>() ?? json,
+        final detail = MatchDetailData.fromJson(snapshot.data!);
+        final match = detail.match;
+        final timeline = detail.timeline.isNotEmpty
+            ? detail.timeline
+            : detail.events;
+        final hasLineups =
+            detail.homeLineup.isNotEmpty || detail.awayLineup.isNotEmpty;
+        return DefaultTabController(
+          length: 4,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+            children: [
+              SectionCard(
+                gradient: true,
+                child: Column(
+                  children: [
+                    Text(
+                      match.competition,
+                      style: const TextStyle(
+                        color: kGold,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        TeamColumn(team: match.homeTeam),
+                        Text(
+                          match.isPlayed
+                              ? '${match.homeScore} - ${match.awayScore}'
+                              : 'VS',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        TeamColumn(team: match.awayTeam),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    StatusBadge(match: match),
+                    if (match.formattedKickoff != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        match.formattedKickoff!,
+                        style: const TextStyle(color: Colors.white60),
+                      ),
+                    ],
+                    if (match.venue != null)
+                      Text(
+                        match.venue!,
+                        style: const TextStyle(color: Colors.white60),
+                      ),
+                  ],
+                ),
+              ),
+              if (detail.stadium != null || detail.referee != null) ...[
+                const SizedBox(height: 8),
+                SectionCard(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      if (detail.stadium != null)
+                        _MatchMeta(icon: Icons.stadium_outlined, text: detail.stadium!),
+                      if (detail.referee != null)
+                        _MatchMeta(icon: Icons.sports_outlined, text: detail.referee!),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              const TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  Tab(text: 'الأحداث'),
+                  Tab(text: 'الإحصائيات'),
+                  Tab(text: 'التشكيل'),
+                  Tab(text: 'التعليق'),
+                ],
+              ),
+              SizedBox(
+                height: 620,
+                child: TabBarView(
+                  children: [
+                    _EventsTab(events: timeline),
+                    _StatsTab(stats: detail.stats),
+                    _LineupsTab(
+                      detail: detail,
+                      homeTeam: match.homeTeam,
+                      awayTeam: match.awayTeam,
+                      visible: hasLineups,
+                    ),
+                    _CommentaryTab(commentary: detail.commentary),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
-        final events =
-            ((json['match'] as Map?)?['events'] as List?)
-                ?.whereType<Map>()
-                .toList() ??
-            const [];
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+      },
+    ),
+  );
+}
+
+class _MatchMeta extends StatelessWidget {
+  const _MatchMeta({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 16, color: kPrimary),
+      const SizedBox(width: 5),
+      Text(text, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+    ],
+  );
+}
+
+class _EventsTab extends StatelessWidget {
+  const _EventsTab({required this.events});
+
+  final List<MatchEventModel> events;
+
+  @override
+  Widget build(BuildContext context) => events.isEmpty
+      ? const _DetailTabPlaceholder(message: 'لا توجد أحداث مسجلة لهذه المباراة.')
+      : ListView(
+          padding: const EdgeInsets.only(top: 12),
           children: [
             SectionCard(
               child: Column(
                 children: [
-                  Text(
-                    match.competition,
-                    style: const TextStyle(
-                      color: kGold,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      TeamColumn(team: match.homeTeam),
-                      Text(
-                        match.isPlayed
-                            ? '${match.homeScore} - ${match.awayScore}'
-                            : 'VS',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                        ),
+                  for (final event in events) ...[
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        radius: 17,
+                        backgroundColor: _eventColor(event.type).withOpacity(.16),
+                        child: Icon(_eventIcon(event.type), size: 17, color: _eventColor(event.type)),
                       ),
-                      TeamColumn(team: match.awayTeam),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Chip(label: Text(match.statusText)),
-                  if (match.venue != null)
-                    Text(
-                      match.venue!,
-                      style: const TextStyle(color: Colors.white60),
+                      title: Text(
+                        _eventLabel(event.type),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: Text(
+                        [
+                          if (event.player != null) event.player!,
+                          if (event.relatedPlayer != null) event.relatedPlayer!,
+                          if (event.teamName != null) event.teamName!,
+                          if (event.text != null) event.text!,
+                        ].join(' · '),
+                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                      ),
+                      trailing: Text(
+                        event.minute == null
+                            ? '—'
+                            : '${event.minute}${event.addedTime == null ? '' : '+${event.addedTime}'}’',
+                        style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.w900),
+                      ),
                     ),
+                    if (event != events.last) const Divider(height: 1),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            if (events.isNotEmpty) ...[
-              const SectionTitle(icon: Icons.timeline, title: 'أحداث المباراة'),
-              const SizedBox(height: 8),
-              SectionCard(
-                child: Column(
-                  children: events.map((event) {
-                    final data = event.cast<String, dynamic>();
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: kPrimary.withOpacity(.14),
-                        child: Text(
-                          '${data['minute'] ?? "—"}',
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      ),
-                      title: Text(
-                        data['player']?.toString() ??
-                            data['type']?.toString() ??
-                            'حدث',
-                      ),
-                      subtitle: Text(data['type']?.toString() ?? ''),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
           ],
         );
-      },
+}
+
+class _StatsTab extends StatelessWidget {
+  const _StatsTab({required this.stats});
+
+  final List<MatchStatRow> stats;
+
+  @override
+  Widget build(BuildContext context) => stats.isEmpty
+      ? const _DetailTabPlaceholder(message: 'الإحصائيات غير متاحة لهذه المباراة.')
+      : ListView(
+          padding: const EdgeInsets.only(top: 12),
+          children: [
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SectionTitle(icon: Icons.bar_chart, title: 'إحصائيات المباراة'),
+                  const SizedBox(height: 14),
+                  for (final stat in stats) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('${stat.home}${stat.unit == 'percent' ? '%' : ''}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                        Text(stat.label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                        Text('${stat.away}${stat.unit == 'percent' ? '%' : ''}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    _StatBar(home: stat.home, away: stat.away, unit: stat.unit),
+                    const SizedBox(height: 14),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+}
+
+class _LineupsTab extends StatelessWidget {
+  const _LineupsTab({
+    required this.detail,
+    required this.homeTeam,
+    required this.awayTeam,
+    required this.visible,
+  });
+
+  final MatchDetailData detail;
+  final Team homeTeam;
+  final Team awayTeam;
+  final bool visible;
+
+  @override
+  Widget build(BuildContext context) => !visible
+      ? const _DetailTabPlaceholder(message: 'لم تُعلن التشكيلة بعد.')
+      : ListView(
+          padding: const EdgeInsets.only(top: 12),
+          children: [
+            _LineupBoard(
+              team: homeTeam,
+              formation: detail.homeFormation,
+              coach: detail.homeCoach,
+              players: detail.homeLineup,
+              bench: detail.homeBench,
+            ),
+            const SizedBox(height: 12),
+            _LineupBoard(
+              team: awayTeam,
+              formation: detail.awayFormation,
+              coach: detail.awayCoach,
+              players: detail.awayLineup,
+              bench: detail.awayBench,
+            ),
+          ],
+        );
+}
+
+class _CommentaryTab extends StatelessWidget {
+  const _CommentaryTab({required this.commentary});
+
+  final List<Map<String, dynamic>> commentary;
+
+  @override
+  Widget build(BuildContext context) => commentary.isEmpty
+      ? const _DetailTabPlaceholder(message: 'لا يوجد تعليق متاح لهذه المباراة.')
+      : ListView.separated(
+          padding: const EdgeInsets.only(top: 12),
+          itemCount: commentary.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 7),
+          itemBuilder: (_, index) {
+            final item = commentary[index];
+            return SectionCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    decoration: BoxDecoration(color: kCardAlt, borderRadius: BorderRadius.circular(7)),
+                    child: Text(
+                      item['minute'] == null ? '—' : '${item['minute']}’',
+                      style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(item['text']?.toString() ?? '—', style: const TextStyle(height: 1.5))),
+                ],
+              ),
+            );
+          },
+        );
+}
+
+class _StatBar extends StatelessWidget {
+  const _StatBar({required this.home, required this.away, required this.unit});
+
+  final int home;
+  final int away;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = home + away == 0 ? 1 : home + away;
+    final ratio = unit == 'percent' ? home / 100 : home / total;
+    final homeFlex = (ratio * 100).round().clamp(1, 99);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        height: 8,
+        child: Row(
+          children: [
+            Flexible(flex: homeFlex, child: Container(color: kPrimary)),
+            Expanded(child: Container(color: kGold.withOpacity(.6))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LineupBoard extends StatelessWidget {
+  const _LineupBoard({
+    required this.team,
+    required this.players,
+    required this.bench,
+    this.formation,
+    this.coach,
+  });
+
+  final Team team;
+  final List<LineupPlayer> players;
+  final List<LineupPlayer> bench;
+  final String? formation;
+  final String? coach;
+
+  @override
+  Widget build(BuildContext context) {
+    final keeper = players.isEmpty ? null : players.firstWhere(
+      (player) => player.position.contains('حارس') || player.position.toLowerCase().contains('goal'),
+      orElse: () => players.first,
+    );
+    final outfield = players.where((player) => player.id != keeper?.id).toList();
+    final rows = _formationRows(formation, outfield.length);
+    var offset = 0;
+    final lines = <List<LineupPlayer>>[
+      if (keeper != null) [keeper],
+    ];
+    for (final count in rows) {
+      if (offset >= outfield.length) break;
+      lines.add(outfield.skip(offset).take(count).toList());
+      offset += count;
+    }
+    return SectionCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                TeamLogo(url: team.crestUrl, size: 28),
+                const SizedBox(width: 8),
+                Expanded(child: Text(team.name, style: const TextStyle(fontWeight: FontWeight.w900))),
+                if (formation != null) Text(formation!, style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w900)),
+              ],
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.all(10),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: const LinearGradient(colors: [Color(0xff14563b), Color(0xff0c3929)]),
+              border: Border.all(color: kPrimary.withOpacity(.25)),
+            ),
+            child: Column(
+              children: [
+                for (final line in lines) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      for (final player in line) _PitchPlayer(player: player),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                ],
+              ],
+            ),
+          ),
+          if (coach != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text('المدرب: $coach', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              ),
+            ),
+          if (bench.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text('البدلاء: ${bench.map((player) => player.name).join('، ')}', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PitchPlayer extends StatelessWidget {
+  const _PitchPlayer({required this.player});
+
+  final LineupPlayer player;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 62,
+    child: Column(
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundColor: kPrimary.withOpacity(.18),
+          backgroundImage: player.photoUrl == null ? null : NetworkImage(player.photoUrl!),
+          child: player.photoUrl == null ? Text('${player.number ?? '—'}', style: const TextStyle(fontSize: 11, color: Colors.white)) : null,
+        ),
+        const SizedBox(height: 3),
+        Text(player.name.split(' ').take(2).join(' '), maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
+      ],
+    ),
+  );
+}
+
+List<int> _formationRows(String? formation, int count) {
+  final parsed = (formation ?? '')
+      .split(RegExp(r'[^0-9]+'))
+      .where((value) => value.isNotEmpty)
+      .map(int.parse)
+      .where((value) => value > 0 && value < 7)
+      .toList();
+  if (parsed.length >= 2 && parsed.reduce((a, b) => a + b) == count) return parsed;
+  if (count == 10) return const [4, 3, 3];
+  final rows = <int>[];
+  var remaining = count;
+  while (remaining > 0) {
+    final take = remaining > 4 ? 4 : remaining;
+    rows.add(take);
+    remaining -= take;
+  }
+  return rows;
+}
+
+String _eventLabel(String raw) {
+  final type = raw.toLowerCase();
+  if (type.contains('goal')) return 'هدف';
+  if (type.contains('yellow')) return 'بطاقة صفراء';
+  if (type.contains('red')) return 'بطاقة حمراء';
+  if (type.contains('substitution')) return 'تبديل';
+  if (type.contains('injury')) return 'إصابة';
+  if (type.contains('corner')) return 'ركلة ركنية';
+  if (type.contains('lineup')) return 'التشكيل الرسمي';
+  if (type.contains('half')) return 'نهاية الشوط الأول';
+  if (type.contains('full')) return 'نهاية المباراة';
+  return raw.isEmpty ? 'حدث' : raw;
+}
+
+IconData _eventIcon(String raw) {
+  final type = raw.toLowerCase();
+  if (type.contains('goal')) return Icons.sports_soccer;
+  if (type.contains('yellow') || type.contains('red')) return Icons.style_outlined;
+  if (type.contains('substitution')) return Icons.swap_horiz;
+  if (type.contains('injury')) return Icons.healing_outlined;
+  if (type.contains('lineup')) return Icons.groups_outlined;
+  return Icons.timeline;
+}
+
+Color _eventColor(String raw) {
+  final type = raw.toLowerCase();
+  if (type.contains('goal')) return kPrimary;
+  if (type.contains('red')) return kLive;
+  if (type.contains('yellow')) return kGold;
+  return Colors.white70;
+}
+
+class _DetailTabPlaceholder extends StatelessWidget {
+  const _DetailTabPlaceholder({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Text(message, style: const TextStyle(color: Colors.white60)),
     ),
   );
 }
@@ -798,10 +1649,10 @@ class NextMatchCard extends StatelessWidget {
             TeamColumn(team: match.awayTeam),
           ],
         ),
-        if (match.kickoffText != null) ...[
+        if (match.formattedKickoff != null) ...[
           const SizedBox(height: 12),
           Text(
-            match.kickoffText!,
+            match.formattedKickoff!,
             style: const TextStyle(color: Colors.white60, fontSize: 12),
           ),
         ],
@@ -1212,6 +2063,29 @@ class ErrorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SectionCard(
     child: Text(message, style: const TextStyle(color: Colors.white70)),
+  );
+}
+
+class OfflineBanner extends StatelessWidget {
+  const OfflineBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    color: kGold.withOpacity(.14),
+    child: const Row(
+      children: [
+        Icon(Icons.cloud_off_outlined, size: 16, color: kGold),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'يرجى الاتصال بالإنترنت للحصول على آخر التحديثات — تعرض الآن آخر نسخة محفوظة.',
+            style: TextStyle(color: kGold, fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
   );
 }
 

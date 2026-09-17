@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/app_config.dart';
 import '../models/football_models.dart';
+import 'offline_cache.dart';
 
 class ApiException implements Exception {
   const ApiException(this.message);
@@ -22,8 +23,24 @@ class ApiClient {
   Uri _uri(String path) => Uri.parse('${AppConfig.apiBaseUrl}$path');
 
   Future<Map<String, dynamic>> _get(String path) async {
-    final response = await _client.get(_uri(path));
-    return _decode(response);
+    final cacheKey = path.replaceAll(RegExp(r'[^a-zA-Z0-9/_-]'), '_');
+    try {
+      final response = await _client.get(_uri(path)).timeout(
+        const Duration(seconds: 12),
+      );
+      final decoded = _decode(response);
+      await OfflineCache.instance.write(cacheKey, decoded);
+      markOnline();
+      return decoded;
+    } catch (error) {
+      final cached = await OfflineCache.instance.read(cacheKey);
+      markOffline();
+      if (cached != null) return cached;
+      if (error is ApiException) rethrow;
+      throw const ApiException(
+        'يرجى الاتصال بالإنترنت للحصول على آخر التحديثات',
+      );
+    }
   }
 
   Future<Map<String, dynamic>> _authed(
