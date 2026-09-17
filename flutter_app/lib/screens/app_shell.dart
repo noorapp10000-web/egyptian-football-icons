@@ -187,60 +187,59 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           const SizedBox(height: 18),
-          FutureBuilder <
-              List<Standing>(
-                future: api.getStandings(),
-                builder: (context, snapshot) {
-                  final all = snapshot.data ?? <Standing>[];
-                  final masryIndex = all.indexWhere((row) => row.isMasry);
-                  final maxStart = (all.length - 5).clamp(0, all.length);
-                  final start = masryIndex < 0
-                      ? 0
-                      : (masryIndex - 2).clamp(0, maxStart);
-                  final rows = all.skip(start).take(5);
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SectionTitle(
-                        icon: Icons.list_alt,
-                        title: 'ترتيب المصري في الدوري',
-                      ),
-                      const SizedBox(height: 8),
-                      if (snapshot.connectionState == ConnectionState.waiting)
-                        const LoadingCard()
-                      else
-                        SectionCard(
-                          child: Column(
-                            children: rows
-                                .map(
-                                  (row) => ListTile(
-                                    dense: true,
-                                    leading: CircleAvatar(
-                                      radius: 13,
-                                      child: Text(
-                                        '${row.rank}',
-                                        style: const TextStyle(fontSize: 10),
-                                      ),
-                                    ),
-                                    title: Text(
-                                      row.team.name,
-                                      style: TextStyle(
-                                        fontWeight: row.isMasry
-                                            ? FontWeight.w900
-                                            : FontWeight.w600,
-                                        color: row.isMasry ? kPrimary : null,
-                                      ),
-                                    ),
-                                    trailing: Text('${row.points} نقطة'),
+          FutureBuilder<List<Standing>>(
+            future: api.getStandings(),
+            builder: (context, snapshot) {
+              final all = snapshot.data ?? <Standing>[];
+              final masryIndex = all.indexWhere((row) => row.isMasry);
+              final maxStart = (all.length - 5).clamp(0, all.length);
+              final start = masryIndex < 0
+                  ? 0
+                  : (masryIndex - 2).clamp(0, maxStart);
+              final rows = all.skip(start).take(5);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionTitle(
+                    icon: Icons.list_alt,
+                    title: 'ترتيب المصري في الدوري',
+                  ),
+                  const SizedBox(height: 8),
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const LoadingCard()
+                  else
+                    SectionCard(
+                      child: Column(
+                        children: rows
+                            .map(
+                              (row) => ListTile(
+                                dense: true,
+                                leading: CircleAvatar(
+                                  radius: 13,
+                                  child: Text(
+                                    '${row.rank}',
+                                    style: const TextStyle(fontSize: 10),
                                   ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
+                                ),
+                                title: Text(
+                                  row.team.name,
+                                  style: TextStyle(
+                                    fontWeight: row.isMasry
+                                        ? FontWeight.w900
+                                        : FontWeight.w600,
+                                    color: row.isMasry ? kPrimary : null,
+                                  ),
+                                ),
+                                trailing: Text('${row.points} نقطة'),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           const SizedBox(height: 18),
           FutureBuilder<List<Player>>(
             future: api.getSquad(),
