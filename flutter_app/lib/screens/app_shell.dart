@@ -2918,6 +2918,8 @@ class _MatchDetailTabs extends StatelessWidget {
         ),
       );
 
+}
+
 class _EventsTab extends StatelessWidget {
   const _EventsTab({
     required this.events,
