@@ -148,7 +148,6 @@ class _NewsIntro extends StatelessWidget {
             ],
           ),
         ),
-        const Icon(Icons.auto_awesome_rounded, color: kGold, size: 25),
       ],
     ),
   );
