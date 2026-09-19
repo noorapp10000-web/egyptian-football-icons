@@ -70,6 +70,7 @@ flutter:
   assets:
     - assets/images/team_crest.png
     - assets/images/matchday_stands.jpg
+    - assets/images/match_card_background.png
     - assets/images/history/
 
   # To add assets to your application, add an assets section, like this:
