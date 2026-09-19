@@ -184,7 +184,7 @@ class _StandingsHero extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'المصري في المركز ' + masry.rank.toString(),
+              'المصري في المركز ${masry.rank}',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 25,
@@ -520,7 +520,7 @@ class _StandingRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        row.played.toString() + ' مباراة',
+                        '${row.played} مباراة',
                         style: const TextStyle(
                           color: kMuted,
                           fontSize: 9,
