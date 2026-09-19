@@ -1825,73 +1825,40 @@ class _HistoryScreenState extends State<HistoryScreen> {
   int selected = 0;
 
   static const tabs = [
-    ('الحكاية', Icons.history),
-    ('البطولات', Icons.emoji_events_outlined),
-    ('مسار الرابطة', Icons.route),
-    ('المدربون', Icons.manage_accounts_outlined),
-    ('الرؤساء', Icons.workspace_premium_outlined),
-    ('الهدافون', Icons.gps_fixed),
-    ('الأساطير', Icons.star_outline),
-    ('الأكثر مشاركة', Icons.groups_outlined),
-    ('الهوية', Icons.verified_outlined),
+    ('الحكاية', Icons.history_rounded),
+    ('البطولات', Icons.emoji_events_rounded),
+    ('مسار الرابطة', Icons.route_rounded),
+    ('المدربون', Icons.sports_rounded),
+    ('الرؤساء', Icons.workspace_premium_rounded),
+    ('الهدافون', Icons.gps_fixed_rounded),
+    ('الأساطير', Icons.star_rounded),
+    ('الأكثر مشاركة', Icons.groups_rounded),
+    ('الهوية', Icons.shield_rounded),
   ];
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+    padding: const EdgeInsets.fromLTRB(14, 10, 14, 34),
     children: [
-      const SectionCard(
-        gradient: true,
-        child: Row(
-          children: [
-            BrandMark(size: 62),
-            SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                'تاريخ النادي المصري\nقرن كامل من الكرة والهوية',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      const _HistoryHero(),
       const SizedBox(height: 14),
-      const Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          StatChip(value: '1920', label: 'سنة التأسيس'),
-          StatChip(value: '17', label: 'لقب دوري القناة'),
-          StatChip(value: '1', label: 'كأس مصر'),
-          StatChip(value: '1', label: 'كأس الرابطة'),
-        ],
+      const _HistoryMetrics(),
+      const SizedBox(height: 20),
+      _HistoryNav(
+        tabs: tabs,
+        selected: selected,
+        onChanged: (value) => setState(() => selected = value),
       ),
       const SizedBox(height: 18),
-      Wrap(
-        spacing: 7,
-        runSpacing: 7,
-        children: [
-          for (var i = 0; i < tabs.length; i++)
-            ChoiceChip(
-              avatar: Icon(tabs[i].$2, size: 15),
-              label: Text(tabs[i].$1),
-              selected: selected == i,
-              onSelected: (_) => setState(() => selected = i),
-              selectedColor: kPrimary,
-              labelStyle: TextStyle(
-                color: selected == i ? const Color(0xff092017) : Colors.white70,
-                fontWeight: FontWeight.w800,
-                fontSize: 11,
-              ),
-            ),
-        ],
+      AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeIn,
+        child: KeyedSubtree(
+          key: ValueKey(selected),
+          child: _content(),
+        ),
       ),
-      const SizedBox(height: 20),
-      _content(),
     ],
   );
 
@@ -1903,17 +1870,353 @@ class _HistoryScreenState extends State<HistoryScreen> {
     4 => const _PresidentsSection(),
     5 => const _RecordsSection(
       title: 'أفضل الهدافين في التاريخ',
+      eyebrow: 'سجل لا ينسى',
       records: historyTopScorers,
       statLabel: 'هدف',
+      icon: Icons.gps_fixed_rounded,
     ),
     6 => const _LegendsSection(),
     7 => const _RecordsSection(
       title: 'الأكثر مشاركة في تاريخ النادي',
+      eyebrow: 'رجال الاستمرارية',
       records: historyAppearances,
       statLabel: 'مباراة',
+      icon: Icons.groups_rounded,
     ),
     _ => const _IdentitySection(),
   };
+}
+
+class _HistoryHero extends StatelessWidget {
+  const _HistoryHero();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 238,
+    padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(28),
+      gradient: const LinearGradient(
+        colors: [Color(0xff1d5940), Color(0xff0d2b20), Color(0xff071912)],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        stops: [0, .52, 1],
+      ),
+      border: Border.all(color: kPrimary.withOpacity(.26)),
+      boxShadow: [
+        BoxShadow(
+          color: kPrimary.withOpacity(.12),
+          blurRadius: 30,
+          offset: Offset(0, 16),
+        ),
+      ],
+    ),
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: -30,
+          bottom: -42,
+          child: Icon(
+            Icons.history_edu_rounded,
+            size: 190,
+            color: Colors.white.withOpacity(.035),
+          ),
+        ),
+        Positioned(
+          top: -22,
+          left: 20,
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: kGold.withOpacity(.08),
+              boxShadow: [
+                BoxShadow(color: kGold.withOpacity(.12), blurRadius: 45),
+              ],
+            ),
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const BrandMark(size: 48),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'أرشيف المصري',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: .7,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: kGold.withOpacity(.14),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: kGold.withOpacity(.34)),
+                  ),
+                  child: const Text(
+                    '1920 — 2026',
+                    style: TextStyle(
+                      color: kGold,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            const Text(
+              'قرن من الحكايات',
+              style: TextStyle(
+                color: kGold,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'المصري ليس ناديًا فقط\nإنه ذاكرة مدينة كاملة',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 25,
+                height: 1.22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: kPrimary,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                const Text(
+                  'النسور الخضراء · بورسعيد',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _HistoryMetrics extends StatelessWidget {
+  const _HistoryMetrics();
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: const [
+      Expanded(child: _HistoryMetric(value: '106', label: 'عامًا من الذاكرة')),
+      SizedBox(width: 8),
+      Expanded(child: _HistoryMetric(value: '17', label: 'لقبًا في القناة')),
+      SizedBox(width: 8),
+      Expanded(child: _HistoryMetric(value: '89', label: 'هدفًا للضظوي')),
+    ],
+  );
+}
+
+class _HistoryMetric extends StatelessWidget {
+  const _HistoryMetric({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
+    decoration: BoxDecoration(
+      color: kCard,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: kLine),
+    ),
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: kPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.white60, fontSize: 9),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HistoryNav extends StatelessWidget {
+  const _HistoryNav({
+    required this.tabs,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<(String, IconData)> tabs;
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'استكشف الأرشيف',
+        style: TextStyle(
+          color: Colors.white54,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: .7,
+        ),
+      ),
+      const SizedBox(height: 9),
+      SizedBox(
+        height: 78,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          reverse: true,
+          itemCount: tabs.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (_, index) => InkWell(
+            onTap: () => onChanged(index),
+            borderRadius: BorderRadius.circular(17),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: 88,
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: selected == index
+                    ? kPrimary.withOpacity(.16)
+                    : kCard,
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(
+                  color: selected == index ? kPrimary : kLine,
+                  width: selected == index ? 1.3 : 1,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    tabs[index].$2,
+                    size: 20,
+                    color: selected == index ? kPrimary : Colors.white54,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    tabs[index].$1,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected == index ? kInk : Colors.white60,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _HistoryLead extends StatelessWidget {
+  const _HistoryLead({
+    required this.eyebrow,
+    required this.title,
+    required this.description,
+    required this.icon,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String description;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(start: 4, end: 4, bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: kGold.withOpacity(.13),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: kGold.withOpacity(.28)),
+          ),
+          child: Icon(icon, color: kGold, size: 21),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eyebrow.toUpperCase(),
+                style: const TextStyle(
+                  color: kPrimary,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                description,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  height: 1.45,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _TimelineSection extends StatelessWidget {
@@ -1923,55 +2226,128 @@ class _TimelineSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(icon: Icons.timeline, title: 'الخط الزمني'),
-      const SizedBox(height: 10),
-      for (final item in historyTimeline) ...[
-        SectionCard(
-          gradient: item.gold,
+      const _HistoryLead(
+        eyebrow: '01 · الحكاية',
+        title: 'من الشرارة إلى اليوم',
+        description:
+            'محطات صنعت شخصية المصري، من روح ثورة 1919 حتى أحدث لقب في خزائن النسور.',
+        icon: Icons.timeline_rounded,
+      ),
+      for (var index = 0; index < historyTimeline.length; index++)
+        _TimelineCard(item: historyTimeline[index], index: index),
+    ],
+  );
+}
+
+class _TimelineCard extends StatelessWidget {
+  const _TimelineCard({required this.item, required this.index});
+
+  final HistoryTimeline item;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: 42,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(
-                    item.year,
-                    style: const TextStyle(
-                      color: kGold,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      item.title,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                ],
-              ),
-              if (item.image != null) ...[
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.asset(
-                    historyAsset(item.image!),
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: item.gold
+                      ? kGold.withOpacity(.18)
+                      : kPrimary.withOpacity(.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: item.gold ? kGold : kPrimary,
+                    width: 1.5,
                   ),
                 ),
-              ],
-              const SizedBox(height: 8),
-              Text(
-                item.body,
-                style: const TextStyle(color: Colors.white70, height: 1.65),
+                child: Icon(
+                  item.gold ? Icons.emoji_events_rounded : Icons.circle,
+                  size: item.gold ? 14 : 7,
+                  color: item.gold ? kGold : kPrimary,
+                ),
               ),
+              if (index != historyTimeline.length - 1)
+                Expanded(child: Container(width: 1, color: kLine)),
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(width: 8),
+        Expanded(
+          child: SectionCard(
+            gradient: item.gold,
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: kGold.withOpacity(.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        item.year,
+                        style: const TextStyle(
+                          color: kGold,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (item.gold)
+                      const _HistoryTag(
+                        label: 'محطة ذهبية',
+                        color: kGold,
+                        icon: Icons.auto_awesome_rounded,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (item.image != null) ...[
+                  const SizedBox(height: 12),
+                  _HistoryImage(
+                    path: historyAsset(item.image!),
+                    height: 156,
+                    radius: 15,
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Text(
+                  item.body,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    height: 1.7,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
-    ],
+    ),
   );
 }
 
@@ -1982,82 +2358,134 @@ class _HonoursSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(
-        icon: Icons.emoji_events_outlined,
-        title: 'خزانة البطولات',
+      const _HistoryLead(
+        eyebrow: '02 · البطولات',
+        title: 'الخزانة التي لا تنسى',
+        description:
+            'كل لقب له طعم، وكل وصافة فصل كامل. هنا تظهر مسيرة المصري بالأرقام والسنوات.',
+        icon: Icons.emoji_events_rounded,
       ),
-      const SizedBox(height: 10),
       for (final honour in historyHonours) ...[
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      honour.title,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                  Text(
-                    '${honour.wins.length}× بطل',
-                    style: const TextStyle(
-                      color: kGold,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final win in honour.wins) _HistoryPill(text: win),
-                ],
-              ),
-              if (honour.runnersUp.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                const Text(
-                  'الوصافة',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    for (final year in honour.runnersUp)
-                      _HistoryPill(text: year, muted: true),
-                  ],
-                ),
-              ],
-              if (honour.note != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  honour.note!,
-                  style: const TextStyle(
-                    color: kPrimary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
+        _HonourCard(honour: honour),
         const SizedBox(height: 10),
       ],
     ],
   );
 }
 
+class _HonourCard extends StatelessWidget {
+  const _HonourCard({required this.honour});
+
+  final HistoryHonour honour;
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+    gradient: honour.wins.length >= 3,
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: kGold.withOpacity(.15),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(Icons.emoji_events_rounded, color: kGold),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                honour.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Text(
+              '${honour.wins.length}',
+              style: const TextStyle(
+                color: kGold,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Text(
+              'لقب',
+              style: TextStyle(color: Colors.white54, fontSize: 10),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        const _HistoryMiniLabel(
+          text: 'سنوات التتويج',
+          icon: Icons.verified_rounded,
+          color: kPrimary,
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            for (final win in honour.wins)
+              _HistoryPill(text: win, icon: Icons.check_rounded),
+          ],
+        ),
+        if (honour.runnersUp.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          const _HistoryMiniLabel(
+            text: 'الوصافة',
+            icon: Icons.trending_up_rounded,
+            color: Colors.white54,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              for (final year in honour.runnersUp)
+                _HistoryPill(
+                  text: year,
+                  muted: true,
+                  icon: Icons.remove_rounded,
+                ),
+            ],
+          ),
+        ],
+        if (honour.note != null) ...[
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(.09),
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: kPrimary.withOpacity(.16)),
+            ),
+            child: Text(
+              honour.note!,
+              style: const TextStyle(
+                color: kPrimary,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
 class _CupPathSection extends StatelessWidget {
   const _CupPathSection();
+
   static const stages = <(String, String, String, List<String>)>[
     (
       'دور المجموعات',
@@ -2097,68 +2525,65 @@ class _CupPathSection extends StatelessWidget {
       ['8 يونيو 2026 · إنبي 0–3 المصري · النهائي'],
     ),
   ];
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(icon: Icons.route, title: 'مسار كأس عاصمة مصر 2026'),
-      const SizedBox(height: 10),
-      for (final stage in stages) ...[
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                stage.$1,
-                style: const TextStyle(
-                  color: kGold,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              Text(stage.$2, style: const TextStyle(color: Colors.white70)),
-              Text(
-                stage.$3,
-                style: const TextStyle(
-                  color: kPrimary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Divider(),
-              ...stage.$4.map(
-                (m) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(m, style: const TextStyle(fontSize: 11)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
+      const _HistoryLead(
+        eyebrow: '03 · مسار الرابطة',
+        title: 'طريق الكأس خطوة بخطوة',
+        description:
+            'رحلة 2026 كاملة، من أول صافرة في المجموعات إلى ليلة رفع الكأس.',
+        icon: Icons.route_rounded,
+      ),
+      for (var index = 0; index < stages.length; index++)
+        _CupStageCard(stage: stages[index], index: index),
+      const SizedBox(height: 4),
       SectionCard(
         padding: EdgeInsets.zero,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: SizedBox(
-            height: 190,
+            height: 205,
             child: PageView(
               children: [
                 for (final image in historyGallery)
                   Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.asset(historyAsset(image), fit: BoxFit.cover),
+                      Image.asset(
+                        historyAsset(image),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const ColoredBox(
+                          color: kCardAlt,
+                          child: Icon(
+                            Icons.photo_library_outlined,
+                            color: kPrimary,
+                            size: 40,
+                          ),
+                        ),
+                      ),
                       Positioned(
-                        bottom: 0,
                         left: 0,
                         right: 0,
+                        bottom: 0,
                         child: Container(
-                          color: Colors.black54,
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.fromLTRB(14, 30, 14, 12),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.transparent, Color(0xdd071912)],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
                           child: Text(
                             image.replaceAll('.webp', ''),
-                            style: const TextStyle(fontSize: 11),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
@@ -2173,6 +2598,103 @@ class _CupPathSection extends StatelessWidget {
   );
 }
 
+class _CupStageCard extends StatelessWidget {
+  const _CupStageCard({required this.stage, required this.index});
+
+  final (String, String, String, List<String>) stage;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: SectionCard(
+      gradient: index == 3,
+      padding: const EdgeInsets.all(15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: index == 3
+                      ? kGold.withOpacity(.18)
+                      : kPrimary.withOpacity(.13),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${index + 1}'.padLeft(2, '0'),
+                  style: TextStyle(
+                    color: index == 3 ? kGold : kPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  stage.$1,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (index == 3)
+                const Icon(Icons.emoji_events_rounded, color: kGold),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Text(
+            stage.$2,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            stage.$3,
+            style: TextStyle(
+              color: index == 3 ? kGold : kPrimary,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(height: 1, color: kLine),
+          const SizedBox(height: 7),
+          for (final match in stage.$4)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Icon(Icons.arrow_left_rounded, color: kPrimary, size: 16),
+                  ),
+                  const SizedBox(width: 3),
+                  Expanded(
+                    child: Text(
+                      match,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _CoachesSection extends StatelessWidget {
   const _CoachesSection();
 
@@ -2180,25 +2702,24 @@ class _CoachesSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(
-        icon: Icons.manage_accounts_outlined,
-        title: 'تسلسل المدربين',
+      const _HistoryLead(
+        eyebrow: '04 · المدربون',
+        title: 'العقول على الخط',
+        description:
+            'سجل كامل للمدربين الذين قادوا المصري، من بوشكاش إلى الجهاز الحالي.',
+        icon: Icons.sports_rounded,
       ),
-      const SizedBox(height: 5),
-      const Text(
-        'فترات تدريبية موثقة من بوشكاش 1979 حتى اليوم، مع الصور المحلية المتاحة.',
-        style: TextStyle(color: Colors.white60, fontSize: 11),
-      ),
-      const SizedBox(height: 10),
-      for (final coach in historyCoaches) ...[
+      for (var index = 0; index < historyCoaches.length; index++)
         _HistoryPersonTile(
-          title: coach.name,
-          subtitle: '${coach.from} — ${coach.to}',
-          note: '${coach.matches} مباراة · ${coach.points} نقطة/مباراة',
-          image: coach.image,
+          index: index,
+          title: historyCoaches[index].name,
+          subtitle:
+              '${historyCoaches[index].from} — ${historyCoaches[index].to}',
+          note:
+              '${historyCoaches[index].matches} مباراة · ${historyCoaches[index].points} نقطة/مباراة',
+          image: historyCoaches[index].image,
+          active: index == 0,
         ),
-        const SizedBox(height: 8),
-      ],
     ],
   );
 }
@@ -2210,25 +2731,23 @@ class _PresidentsSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(
-        icon: Icons.workspace_premium_outlined,
-        title: 'تسلسل رؤساء النادي',
+      const _HistoryLead(
+        eyebrow: '05 · الرؤساء',
+        title: 'من حمل الراية',
+        description:
+            'قيادات صنعت قرارات النادي وحافظت على صوته المصري عبر أكثر من قرن.',
+        icon: Icons.workspace_premium_rounded,
       ),
-      const SizedBox(height: 5),
-      const Text(
-        'من أحمد حسني 1920 إلى كامل أبو علي — فترات رئاسة موثقة.',
-        style: TextStyle(color: Colors.white60, fontSize: 11),
-      ),
-      const SizedBox(height: 10),
-      for (final president in historyPresidents) ...[
+      for (var index = 0; index < historyPresidents.length; index++)
         _HistoryPersonTile(
-          title: president.name,
-          subtitle: '${president.from} — ${president.to}',
-          note: president.note,
-          image: president.image,
+          index: index,
+          title: historyPresidents[index].name,
+          subtitle:
+              '${historyPresidents[index].from} — ${historyPresidents[index].to}',
+          note: historyPresidents[index].note,
+          image: historyPresidents[index].image,
+          active: index == historyPresidents.length - 1,
         ),
-        const SizedBox(height: 8),
-      ],
     ],
   );
 }
@@ -2236,87 +2755,123 @@ class _PresidentsSection extends StatelessWidget {
 class _RecordsSection extends StatelessWidget {
   const _RecordsSection({
     required this.title,
+    required this.eyebrow,
     required this.records,
     required this.statLabel,
+    required this.icon,
   });
 
   final String title;
+  final String eyebrow;
   final List<HistoryRecord> records;
   final String statLabel;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      SectionTitle(icon: Icons.gps_fixed, title: title),
-      const SizedBox(height: 5),
-      const Text(
-        'ترتيب محفوظ داخل التطبيق ويظل متاحًا بدون إنترنت.',
-        style: TextStyle(color: Colors.white60, fontSize: 11),
+      _HistoryLead(
+        eyebrow: eyebrow,
+        title: title,
+        description: statLabel == 'هدف'
+            ? 'أسماء تركت بصمتها في الشباك، مرتبة حسب الأهداف التاريخية.'
+            : 'أسماء ظلت حاضرة بقميص المصري موسمًا بعد موسم.',
+        icon: icon,
       ),
-      const SizedBox(height: 10),
       for (final record in records) ...[
-        SectionCard(
-          child: Row(
-            children: [
-              SizedBox(
-                width: 26,
-                child: Text(
-                  '${record.rank}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _HistoryPortrait(
-                image: record.image,
-                size: 48,
-                fallback: record.name,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      record.name,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                    Text(
-                      '${record.goals} هدف${record.assists > 0 ? ' · ${record.assists} تمريرة حاسمة' : ''}',
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                children: [
-                  Text(
-                    '${statLabel == 'هدف' ? record.goals : record.apps}',
-                    style: const TextStyle(
-                      color: kPrimary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    statLabel,
-                    style: const TextStyle(color: Colors.white54, fontSize: 10),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        _RecordTile(record: record, statLabel: statLabel),
         const SizedBox(height: 8),
       ],
     ],
   );
+}
+
+class _RecordTile extends StatelessWidget {
+  const _RecordTile({required this.record, required this.statLabel});
+
+  final HistoryRecord record;
+  final String statLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = switch (record.rank) {
+      1 => kGold,
+      2 => const Color(0xffc6d2d0),
+      3 => const Color(0xffbb8957),
+      _ => kPrimary,
+    };
+    final value = statLabel == 'هدف' ? record.goals : record.apps;
+    return SectionCard(
+      gradient: record.rank == 1,
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(.14),
+              shape: BoxShape.circle,
+              border: Border.all(color: accent.withOpacity(.45)),
+            ),
+            child: Text(
+              '${record.rank}',
+              style: TextStyle(color: accent, fontWeight: FontWeight.w900),
+            ),
+          ),
+          const SizedBox(width: 10),
+          _HistoryPortrait(
+            image: record.image,
+            size: 52,
+            fallback: record.name,
+            radius: 16,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  record.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  statLabel == 'هدف'
+                      ? '${record.goals} هدف${record.assists > 0 ? ' · ${record.assists} تمريرات حاسمة' : ''}'
+                      : '${record.goals} هدف · ${record.assists} تمريرة حاسمة',
+                  style: const TextStyle(color: Colors.white54, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$value',
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                statLabel,
+                style: const TextStyle(color: Colors.white54, fontSize: 9),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _LegendsSection extends StatelessWidget {
@@ -2326,21 +2881,106 @@ class _LegendsSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(
-        icon: Icons.star_outline,
-        title: 'أساطير النسور الخضراء',
+      const _HistoryLead(
+        eyebrow: '06 · الأساطير',
+        title: 'أسماء صارت حكايات',
+        description:
+            'نجوم لم يغادروا ذاكرة بورسعيد، حتى بعد أن غادروا الملعب.',
+        icon: Icons.star_rounded,
       ),
-      const SizedBox(height: 10),
-      for (final legend in historyLegends) ...[
-        _HistoryPersonTile(
-          title: legend.name,
-          subtitle: '${legend.role} · ${legend.era}',
-          note: legend.note,
-          image: legend.image,
-        ),
-        const SizedBox(height: 8),
-      ],
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final width = (constraints.maxWidth - 10) / 2;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final legend in historyLegends)
+                SizedBox(
+                  width: width,
+                  child: _LegendCard(legend: legend),
+                ),
+            ],
+          );
+        },
+      ),
     ],
+  );
+}
+
+class _LegendCard extends StatelessWidget {
+  const _LegendCard({required this.legend});
+
+  final HistoryPerson legend;
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+    padding: EdgeInsets.zero,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          children: [
+            _HistoryPortrait(
+              image: legend.image,
+              size: double.infinity,
+              fallback: legend.name,
+              radius: 0,
+              height: 134,
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.star_rounded, color: kGold, size: 15),
+              ),
+            ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                legend.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  height: 1.25,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${legend.role} · ${legend.era}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: kPrimary, fontSize: 9),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                legend.note,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 10,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -2351,54 +2991,42 @@ class _IdentitySection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(
-        icon: Icons.verified_outlined,
-        title: 'الهوية والمنشآت',
+      const _HistoryLead(
+        eyebrow: '09 · الهوية',
+        title: 'أكثر من لون وشعار',
+        description:
+            'الهوية التي صنعتها بورسعيد: نسر، لون، ملعب، جمهور، وصوت لا يختفي.',
+        icon: Icons.shield_rounded,
       ),
-      const SizedBox(height: 10),
-      for (final item in historyIdentity) ...[
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.title,
-                style: const TextStyle(
-                  color: kPrimary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                item.body,
-                style: const TextStyle(color: Colors.white70, height: 1.6),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
+      for (var index = 0; index < historyIdentity.length; index++) ...[
+        _IdentityCard(item: historyIdentity[index], index: index),
+        const SizedBox(height: 10),
       ],
       SectionCard(
         padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-              child: Image.asset(
-                historyAsset('مدينة بورسعيد.webp'),
-                height: 170,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
+            _HistoryImage(
+              path: historyAsset('مدينة بورسعيد.webp'),
+              height: 185,
+              radius: 20,
             ),
             const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'بورسعيد — مدينة النادي وجمهوره',
-                style: TextStyle(color: Colors.white60, fontSize: 11),
+              padding: EdgeInsets.fromLTRB(14, 11, 14, 14),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_rounded, color: kGold, size: 17),
+                  SizedBox(width: 6),
+                  Text(
+                    'بورسعيد — مدينة النادي وجمهوره',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -2406,23 +3034,32 @@ class _IdentitySection extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       SectionCard(
+        gradient: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionTitle(icon: Icons.open_in_new, title: 'المصادر'),
+            const _HistoryMiniLabel(
+              text: 'مصادر الأرشيف',
+              icon: Icons.menu_book_rounded,
+              color: kGold,
+            ),
             const SizedBox(height: 8),
             for (final source in historySources)
               ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.arrow_back_rounded,
+                  size: 16,
+                  color: kPrimary,
+                ),
                 title: Text(
                   source['label']!,
-                  style: const TextStyle(fontSize: 12),
-                ),
-                trailing: const Icon(
-                  Icons.open_in_new,
-                  size: 15,
-                  color: kPrimary,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 onTap: () => launchUrl(
                   Uri.parse(source['url']!),
@@ -2436,51 +3073,158 @@ class _IdentitySection extends StatelessWidget {
   );
 }
 
-class _HistoryPersonTile extends StatelessWidget {
-  const _HistoryPersonTile({
-    required this.title,
-    required this.subtitle,
-    this.note,
-    this.image,
-  });
+class _IdentityCard extends StatelessWidget {
+  const _IdentityCard({required this.item, required this.index});
 
-  final String title;
-  final String subtitle;
-  final String? note;
-  final String? image;
+  final HistoryIdentity item;
+  final int index;
+
+  static const icons = [
+    Icons.shield_rounded,
+    Icons.palette_rounded,
+    Icons.stadium_rounded,
+    Icons.fitness_center_rounded,
+    Icons.radio_rounded,
+    Icons.sports_handball_rounded,
+  ];
 
   @override
   Widget build(BuildContext context) => SectionCard(
+    padding: const EdgeInsets.all(14),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _HistoryPortrait(image: image, size: 54, fallback: title),
-        const SizedBox(width: 10),
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: kPrimary.withOpacity(.13),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icons[index % icons.length], color: kPrimary, size: 21),
+        ),
+        const SizedBox(width: 11),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 3),
               Text(
-                subtitle,
-                style: const TextStyle(color: Colors.white54, fontSize: 11),
-              ),
-              if (note != null) ...[
-                const SizedBox(height: 5),
-                Text(
-                  note!,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    height: 1.45,
-                  ),
+                item.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
                 ),
-              ],
+              ),
+              const SizedBox(height: 5),
+              Text(
+                item.body,
+                style: const TextStyle(
+                  color: Colors.white65,
+                  height: 1.55,
+                  fontSize: 11,
+                ),
+              ),
             ],
           ),
         ),
       ],
+    ),
+  );
+}
+
+class _HistoryPersonTile extends StatelessWidget {
+  const _HistoryPersonTile({
+    required this.index,
+    required this.title,
+    required this.subtitle,
+    this.note,
+    this.image,
+    this.active = false,
+  });
+
+  final int index;
+  final String title;
+  final String subtitle;
+  final String? note;
+  final String? image;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: SectionCard(
+      gradient: active,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 30,
+            child: Text(
+              '${index + 1}'.padLeft(2, '0'),
+              style: TextStyle(
+                color: active ? kGold : Colors.white38,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          _HistoryPortrait(
+            image: image,
+            size: 56,
+            fallback: title,
+            radius: 17,
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    if (active) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.bolt_rounded, color: kGold, size: 15),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: kPrimary, fontSize: 10),
+                ),
+                if (note != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    note!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 10,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_left_rounded, color: Colors.white24),
+        ],
+      ),
     ),
   );
 }
@@ -2490,62 +3234,169 @@ class _HistoryPortrait extends StatelessWidget {
     this.image,
     required this.size,
     required this.fallback,
+    this.radius = 16,
+    this.height,
   });
 
   final String? image;
   final double size;
   final String fallback;
+  final double radius;
+  final double? height;
 
   @override
-  Widget build(BuildContext context) => ClipOval(
-    child: SizedBox(
-      width: size,
-      height: size,
-      child: image == null
-          ? Container(
-              color: kPrimary.withOpacity(.14),
-              child: Center(
-                child: Text(
-                  fallback.length > 2 ? fallback.substring(0, 2) : fallback,
-                  style: const TextStyle(
-                    color: kPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+  Widget build(BuildContext context) {
+    final boxHeight = height ?? size;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(
+        width: size,
+        height: boxHeight,
+        child: image == null
+            ? _portraitFallback()
+            : Image.asset(
+                historyAsset(image!),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _portraitFallback(),
               ),
-            )
-          : Image.asset(
-              historyAsset(image!),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: kPrimary.withOpacity(.14),
-                child: const Icon(Icons.person, color: kPrimary),
-              ),
-            ),
+      ),
+    );
+  }
+
+  Widget _portraitFallback() => Container(
+    color: kPrimary.withOpacity(.13),
+    alignment: Alignment.center,
+    child: Text(
+      fallback.length > 2 ? fallback.substring(0, 2) : fallback,
+      textAlign: TextAlign.center,
+      style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w900),
     ),
   );
 }
 
-class _HistoryPill extends StatelessWidget {
-  const _HistoryPill({required this.text, this.muted = false});
+class _HistoryImage extends StatelessWidget {
+  const _HistoryImage({
+    required this.path,
+    required this.height,
+    this.radius = 15,
+  });
 
-  final String text;
-  final bool muted;
+  final String path;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(radius),
+    child: SizedBox(
+      width: double.infinity,
+      height: height,
+      child: Image.asset(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const ColoredBox(
+          color: kCardAlt,
+          child: Icon(
+            Icons.photo_outlined,
+            color: kPrimary,
+            size: 32,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _HistoryTag extends StatelessWidget {
+  const _HistoryTag({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final Color color;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
     decoration: BoxDecoration(
-      color: muted ? kCardAlt : kGold.withOpacity(.14),
+      color: color.withOpacity(.11),
       borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withOpacity(.24)),
     ),
-    child: Text(
-      text,
-      style: TextStyle(
-        color: muted ? Colors.white60 : kGold,
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w900),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HistoryMiniLabel extends StatelessWidget {
+  const _HistoryMiniLabel({
+    required this.text,
+    required this.icon,
+    required this.color,
+  });
+
+  final String text;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, color: color, size: 14),
+      const SizedBox(width: 5),
+      Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900),
       ),
+    ],
+  );
+}
+
+class _HistoryPill extends StatelessWidget {
+  const _HistoryPill({
+    required this.text,
+    this.muted = false,
+    required this.icon,
+  });
+
+  final String text;
+  final bool muted;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+    decoration: BoxDecoration(
+      color: muted ? kCardAlt : kGold.withOpacity(.13),
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(color: muted ? kLine : kGold.withOpacity(.22)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: muted ? Colors.white54 : kGold),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            color: muted ? Colors.white60 : kGold,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     ),
   );
 }
