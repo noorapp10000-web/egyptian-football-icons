@@ -370,6 +370,7 @@ class NewsItem {
     required this.sourceName,
     this.imageUrl,
     this.publishedText,
+    this.publishedAt,
   });
 
   final String id;
@@ -378,6 +379,7 @@ class NewsItem {
   final String sourceName;
   final String? imageUrl;
   final String? publishedText;
+  final String? publishedAt;
 
   factory NewsItem.fromJson(Map<String, dynamic> json) => NewsItem(
     id: json['id'] as String? ?? json['url'] as String? ?? '',
@@ -386,6 +388,7 @@ class NewsItem {
     sourceName: json['sourceName'] as String? ?? 'المصدر',
     imageUrl: json['imageUrl'] as String?,
     publishedText: json['publishedText'] as String?,
+    publishedAt: json['publishedAt'] as String?,
   );
 }
 

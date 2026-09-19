@@ -94,7 +94,15 @@ class ApiClient {
 
   Future<List<NewsItem>> getNews() async {
     final data = await _get('/football/news');
-    return _list(data['news']).map(NewsItem.fromJson).toList();
+    final news = _list(data['news']).map(NewsItem.fromJson).toList();
+    news.sort((a, b) {
+      final aDate = DateTime.tryParse(a.publishedAt ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+      final bDate = DateTime.tryParse(b.publishedAt ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+      return bDate.compareTo(aDate);
+    });
+    return news;
   }
 
   Future<Map<String, dynamic>> getMatchDetail(int id) =>

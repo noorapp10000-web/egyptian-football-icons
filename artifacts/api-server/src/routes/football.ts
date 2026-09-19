@@ -16,7 +16,46 @@ const IMAGE_HOSTS = new Set([
   "www.filgoal.com",
   "media.filgoal.com",
   "semedia.filgoal.com",
+  "yallakora.com",
+  "www.yallakora.com",
+  "elwatannews.com",
+  "www.elwatannews.com",
+  "youm7.com",
+  "www.youm7.com",
+  "masrawy.com",
+  "www.masrawy.com",
+  "kooora.com",
+  "www.kooora.com",
+  "kingfut.com",
+  "www.kingfut.com",
+  "cairo24.com",
+  "www.cairo24.com",
+  "btolat.com",
+  "www.btolat.com",
+  "almasryalyoum.com",
+  "www.almasryalyoum.com",
+  "wataninet.com",
+  "www.wataninet.com",
+  "akhbarelyom.com",
+  "www.akhbarelyom.com",
+  "elbalad.news",
+  "www.elbalad.news",
+  "sadaelbalad.com",
+  "www.sadaelbalad.com",
+  "shbabbek.com",
+  "www.shbabbek.com",
+  "newturkpost.com",
+  "www.newturkpost.com",
+  "elghad.news",
+  "www.elghad.news",
 ]);
+
+const isAllowedImageHost = (hostname: string) => {
+  const normalized = hostname.toLowerCase();
+  return [...IMAGE_HOSTS].some(
+    (host) => normalized === host || normalized.endsWith(`.${host}`),
+  );
+};
 
 router.get("/football/image", async (req, res) => {
   const rawUrl = typeof req.query.url === "string" ? req.query.url : "";
@@ -28,7 +67,7 @@ router.get("/football/image", async (req, res) => {
     return;
   }
 
-  if (target.protocol !== "https:" || !IMAGE_HOSTS.has(target.hostname.toLowerCase())) {
+  if (target.protocol !== "https:" || !isAllowedImageHost(target.hostname)) {
     res.status(403).json({ error: "image_host_not_allowed" });
     return;
   }

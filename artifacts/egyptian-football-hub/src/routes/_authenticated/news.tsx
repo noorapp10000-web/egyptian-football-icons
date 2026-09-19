@@ -3,7 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Newspaper } from "lucide-react";
 
 import { getNews } from "@/lib/hub.functions";
-import { ErrorNote, SectionHeading, SectionSkeleton, SourceNote } from "@/components/hub/shared";
+import {
+  ErrorNote,
+  proxiedImageUrl,
+  SectionHeading,
+  SectionSkeleton,
+  SourceNote,
+} from "@/components/hub/shared";
 import { Badge } from "@/components/ui/badge";
 import { RefreshButton } from "@/components/hub/refresh-button";
 
@@ -57,7 +63,12 @@ function NewsPage() {
           className="group block overflow-hidden rounded-2xl border border-border/70 bg-card"
         >
           {lead.imageUrl && (
-            <img src={lead.imageUrl} alt="" className="h-44 w-full object-cover" loading="lazy" />
+            <img
+              src={proxiedImageUrl(lead.imageUrl) ?? undefined}
+              alt=""
+              className="h-44 w-full object-cover"
+              loading="lazy"
+            />
           )}
           <div className="p-4">
             <Badge className="border-0 bg-gold/15 text-[10px] text-gold">{lead.sourceName}</Badge>
@@ -83,7 +94,7 @@ function NewsPage() {
           >
             {item.imageUrl && (
               <img
-                src={item.imageUrl}
+                src={proxiedImageUrl(item.imageUrl) ?? undefined}
                 alt=""
                 className="size-20 shrink-0 rounded-xl object-cover"
                 loading="lazy"

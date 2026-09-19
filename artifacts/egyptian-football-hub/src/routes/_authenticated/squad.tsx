@@ -3,7 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Goal, Shirt, Users } from "lucide-react";
 
 import { getSquad } from "@/lib/hub.functions";
-import { ErrorNote, SectionHeading, SectionSkeleton, SourceNote } from "@/components/hub/shared";
+import {
+  ErrorNote,
+  proxiedImageUrl,
+  SectionHeading,
+  SectionSkeleton,
+  SourceNote,
+} from "@/components/hub/shared";
 import { RefreshButton } from "@/components/hub/refresh-button";
 import { Badge } from "@/components/ui/badge";
 import type { SquadPlayer } from "@/lib/hub-types";
@@ -30,10 +36,10 @@ export const Route = createFileRoute("/_authenticated/squad")({
 });
 
 const GROUPS: { title: string; test: RegExp }[] = [
-  { title: "حراس المرمى", test: /حارس/ },
-  { title: "الدفاع", test: /ظهير|قلب دفاع|مدافع/ },
-  { title: "الوسط", test: /وسط/ },
-  { title: "الهجوم", test: /مهاجم|جناح|رأس حربة/ },
+  { title: "حراس المرمى", test: /حارس|goalkeeper/i },
+  { title: "الدفاع", test: /دفاع|مدافع|ظهير|قلب|defen|back/i },
+  { title: "الوسط", test: /وسط|midfield/i },
+  { title: "الهجوم", test: /مهاجم|جناح|رأس حربة|attack|forward/i },
 ];
 
 function PlayerCard({ player }: { player: SquadPlayer }) {
@@ -50,7 +56,7 @@ function PlayerCard({ player }: { player: SquadPlayer }) {
       )}
       {player.photoUrl ? (
         <img
-          src={player.photoUrl}
+          src={proxiedImageUrl(player.photoUrl) ?? undefined}
           alt={player.name}
           className="mx-auto size-16 rounded-full border border-border object-cover"
           loading="lazy"
@@ -105,7 +111,7 @@ function SquadPage() {
         <div className="flex items-center gap-4 rounded-2xl border border-border/70 bg-card card-sheen p-4">
           {data.coach.photoUrl ? (
             <img
-              src={data.coach.photoUrl}
+              src={proxiedImageUrl(data.coach.photoUrl) ?? undefined}
               alt={data.coach.name}
               className="size-16 shrink-0 rounded-full border-2 border-gold object-cover"
               loading="lazy"
@@ -139,7 +145,7 @@ function SquadPage() {
                     </span>
                     {p.photoUrl && (
                       <img
-                        src={p.photoUrl}
+                        src={proxiedImageUrl(p.photoUrl) ?? undefined}
                         alt={p.name}
                         className="size-8 shrink-0 rounded-full object-cover"
                         loading="lazy"

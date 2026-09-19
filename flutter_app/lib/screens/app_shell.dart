@@ -689,12 +689,28 @@ class SquadScreen extends StatelessWidget {
   const SquadScreen({super.key, required this.api});
   final ApiClient api;
   String group(String p) {
-    if (p.contains('حارس')) return 'حراس المرمى';
-    if (p.contains('دفاع') || p.contains('ظهير') || p.contains('قلب'))
+    final normalized = p.trim().toLowerCase();
+    if (normalized.contains('حارس') || normalized.contains('goalkeeper')) {
+      return 'حراس المرمى';
+    }
+    if (normalized.contains('دفاع') ||
+        normalized.contains('مدافع') ||
+        normalized.contains('ظهير') ||
+        normalized.contains('قلب') ||
+        normalized.contains('defen') ||
+        normalized.contains('back')) {
       return 'الدفاع';
-    if (p.contains('وسط')) return 'الوسط';
-    if (p.contains('هجوم') || p.contains('مهاجم') || p.contains('جناح'))
+    }
+    if (normalized.contains('وسط') || normalized.contains('midfield')) {
+      return 'الوسط';
+    }
+    if (normalized.contains('هجوم') ||
+        normalized.contains('مهاجم') ||
+        normalized.contains('جناح') ||
+        normalized.contains('attack') ||
+        normalized.contains('forward')) {
       return 'الهجوم';
+    }
     return 'لاعبون آخرون';
   }
 

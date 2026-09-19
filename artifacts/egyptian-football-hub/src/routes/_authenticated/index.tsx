@@ -14,6 +14,7 @@ import { getMatches, getNews, getSquad, getStandings } from "@/lib/hub.functions
 import {
   ErrorNote,
   MatchCard,
+  proxiedImageUrl,
   SectionHeading,
   SectionSkeleton,
   SourceNote,
@@ -234,7 +235,12 @@ function TopScorers() {
             className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 transition-colors hover:border-primary/40"
           >
             {p.photoUrl ? (
-              <img src={p.photoUrl} alt="" className="size-10 rounded-full object-cover" loading="lazy" />
+              <img
+                src={proxiedImageUrl(p.photoUrl) ?? undefined}
+                alt=""
+                className="size-10 rounded-full object-cover"
+                loading="lazy"
+              />
             ) : (
               <span className="size-10 rounded-full bg-secondary" />
             )}
@@ -279,7 +285,7 @@ function NewsPreview() {
           >
             {item.imageUrl && (
               <img
-                src={item.imageUrl}
+                src={proxiedImageUrl(item.imageUrl) ?? undefined}
                 alt=""
                 className="size-16 shrink-0 rounded-xl object-cover"
                 loading="lazy"

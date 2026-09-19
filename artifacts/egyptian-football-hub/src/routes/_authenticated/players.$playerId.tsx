@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Radio, RefreshCw, Shirt } from "lucide-react";
 
 import { getPlayerDetail } from "@/lib/hub.functions";
+import { proxiedImageUrl } from "@/components/hub/shared";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -85,7 +86,7 @@ function PlayerPage() {
             <CardContent className="flex flex-wrap items-center gap-4 p-4">
               {data.player.photoUrl ? (
                 <img
-                  src={data.player.photoUrl}
+                  src={proxiedImageUrl(data.player.photoUrl) ?? undefined}
                   alt={data.player.name}
                   className="size-24 rounded-full border object-cover"
                 />
@@ -197,7 +198,11 @@ function PlayerPage() {
                     className="flex items-center gap-3 rounded-lg border p-2.5 text-sm"
                   >
                     {c.toTeamCrestUrl && (
-                      <img src={c.toTeamCrestUrl} alt="" className="size-8 object-contain" />
+                      <img
+                        src={proxiedImageUrl(c.toTeamCrestUrl) ?? undefined}
+                        alt=""
+                        className="size-8 object-contain"
+                      />
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{c.toTeam ?? "—"}</p>

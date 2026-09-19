@@ -14,10 +14,44 @@ String _imageSource(String? value) {
     'www.filgoal.com',
     'media.filgoal.com',
     'semedia.filgoal.com',
+    'yallakora.com',
+    'www.yallakora.com',
+    'elwatannews.com',
+    'www.elwatannews.com',
+    'youm7.com',
+    'www.youm7.com',
+    'masrawy.com',
+    'www.masrawy.com',
+    'kooora.com',
+    'www.kooora.com',
+    'kingfut.com',
+    'www.kingfut.com',
+    'cairo24.com',
+    'www.cairo24.com',
+    'btolat.com',
+    'www.btolat.com',
+    'almasryalyoum.com',
+    'www.almasryalyoum.com',
+    'wataninet.com',
+    'www.wataninet.com',
+    'akhbarelyom.com',
+    'www.akhbarelyom.com',
+    'elbalad.news',
+    'www.elbalad.news',
+    'sadaelbalad.com',
+    'www.sadaelbalad.com',
+    'shbabbek.com',
+    'www.shbabbek.com',
+    'newturkpost.com',
+    'www.newturkpost.com',
+    'elghad.news',
+    'www.elghad.news',
   };
-  if (uri == null ||
-      uri.scheme != 'https' ||
-      !imageHosts.contains(uri.host.toLowerCase())) {
+  final host = uri?.host.toLowerCase() ?? '';
+  final isAllowed = imageHosts.any(
+    (allowed) => host == allowed || host.endsWith('.$allowed'),
+  );
+  if (uri == null || uri.scheme != 'https' || !isAllowed) {
     return source;
   }
 

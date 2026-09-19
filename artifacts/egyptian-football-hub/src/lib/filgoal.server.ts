@@ -79,6 +79,7 @@ export type NewsItem = {
   url: string;
   imageUrl: string | null;
   publishedText: string | null;
+  publishedAt: string | null;
   sourceName: string;
 };
 
@@ -175,12 +176,115 @@ const decode = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const westernDigits = (value: string) =>
+  value.replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+
+const arabicMonths: Record<string, number> = {
+  يناير: 1,
+  فبراير: 2,
+  مارس: 3,
+  أبريل: 4,
+  ابريل: 4,
+  مايو: 5,
+  يونيو: 6,
+  يوليو: 7,
+  أغسطس: 8,
+  اغسطس: 8,
+  سبتمبر: 9,
+  أكتوبر: 10,
+  اكتوبر: 10,
+  نوفمبر: 11,
+  ديسمبر: 12,
+};
+
+const publishedAtFromText = (raw: string | null | undefined) => {
+  if (!raw) return null;
+  const value = westernDigits(decode(raw)).replace(/[،,]/g, " ").replace(/\s+/g, " ").trim();
+  const direct = new Date(value);
+  if (!Number.isNaN(direct.getTime())) return direct.toISOString();
+
+  const arabic = value.match(/(\d{1,2})\s+([^\s]+)\s+(\d{4})/);
+  if (arabic) {
+    const month = arabicMonths[arabic[2]!];
+    if (month) {
+      const parsed = new Date(
+        Date.UTC(Number(arabic[3]), month - 1, Number(arabic[1])),
+      );
+      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    }
+  }
+
+  const dayMonthYear = value.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (dayMonthYear) {
+    const parsed = new Date(
+      Date.UTC(
+        Number(dayMonthYear[3]),
+        Number(dayMonthYear[2]) - 1,
+        Number(dayMonthYear[1]),
+      ),
+    );
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  return null;
+};
+
 const absolute = (url: string | null | undefined) => {
   if (!url) return null;
   if (url.startsWith("//")) return `https:${url}`;
   if (url.startsWith("http://")) return url.replace("http://", "https://");
   if (url.startsWith("/")) return `${FG}${url}`;
   return url;
+};
+
+const absoluteFrom = (url: string | null | undefined, base: string) => {
+  if (!url) return null;
+  const value = absolute(url);
+  if (!value) return null;
+  try {
+    return new URL(value, base).toString();
+  } catch {
+    return null;
+  }
+};
+
+async function imageFromArticle(url: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6_000);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "ar,en;q=0.8",
+      },
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const image =
+      html.match(
+        /<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/i,
+      )?.[1] ??
+      html.match(
+        /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/i,
+      )?.[1] ??
+      null;
+    return absoluteFrom(image ? decode(image) : null, response.url);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const isGoogleNewsUrl = (url: string) => {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return hostname === "news.google.com" || hostname.endsWith(".news.google.com");
+  } catch {
+    return false;
+  }
 };
 
 const num = (value: string | null | undefined) => {
@@ -876,14 +980,21 @@ export function parseFilGoalNews(html: string): NewsItem[] {
       }
     }
     if (!title) continue;
-    const image = chunk.match(/data-src="([^"]+)"/i)?.[1];
-    const date = chunk.match(/<span>[\s\S]*?([^<>]*\d{4}[^<>]*)<\/span>/i)?.[1];
+    const image =
+      chunk.match(/(?:data-src|data-original|data-lazy-src)="([^"]+)"/i)?.[1] ??
+      chunk.match(/<img[^>]+src="([^"]+)"/i)?.[1] ??
+      null;
+    const date =
+      chunk.match(
+        /<span[^>]*>([\s\S]*?(?:\d{4}|[٠-٩]{4})[\s\S]*?)<\/span>/i,
+      )?.[1] ?? null;
     items.push({
       id,
       title,
       url: `${FG}${link[1]}`,
       imageUrl: absolute(image),
       publishedText: date ? decode(date) : null,
+      publishedAt: publishedAtFromText(date),
       sourceName: "FilGoal",
     });
   }
@@ -915,12 +1026,19 @@ export function parseAggregatorNews(xml: string): NewsItem[] {
           });
         }
       }
+      const image =
+        block.match(/<media:(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1] ??
+        block.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1] ??
+        block.match(/<image>\s*<url>([\s\S]*?)<\/url>/i)?.[1] ??
+        block.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] ??
+        null;
       return {
         id: `news-${guid.slice(-40)}`,
         title,
         url,
-        imageUrl: null,
+        imageUrl: absolute(image ? decode(image) : null),
         publishedText,
+        publishedAt: pubDate ? publishedAtFromText(pubDate) : null,
         sourceName: source,
       } satisfies NewsItem;
     })
@@ -1063,7 +1181,24 @@ export async function loadNews() {
       return t.includes("المصري") || t.includes("بورسعيد");
     });
     const merged = [...fgItems, ...aggItems];
-    return [...new Map(merged.map((n) => [n.url, n])).values()].slice(0, 40);
+    const unique = [...new Map(merged.map((n) => [n.url, n])).values()];
+    const withImages = await Promise.all(
+      unique.map(async (item) => {
+        if (isGoogleNewsUrl(item.url)) return { ...item, imageUrl: null };
+        if (item.imageUrl) return item;
+        const imageUrl = await imageFromArticle(item.url);
+        return imageUrl ? { ...item, imageUrl } : item;
+      }),
+    );
+    const timestamp = (item: NewsItem) => {
+      const value = item.publishedAt ? Date.parse(item.publishedAt) : Number.NaN;
+      if (Number.isFinite(value)) return value;
+      const id = item.id.match(/(\d+)$/)?.[1];
+      return id ? Number(id) : 0;
+    };
+    return withImages
+      .sort((a, b) => timestamp(b) - timestamp(a))
+      .slice(0, 40);
   });
   return {
     news: entry.value,
