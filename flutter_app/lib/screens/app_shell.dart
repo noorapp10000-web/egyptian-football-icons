@@ -590,11 +590,32 @@ class NextMatchShowcase extends StatelessWidget {
         : remaining;
 
     return SectionCard(
-      gradient: true,
-      padding: const EdgeInsets.fromLTRB(15, 16, 15, 15),
+      padding: EdgeInsets.zero,
       child: Stack(
         clipBehavior: Clip.hardEdge,
         children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/matchday_stands.jpg',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    kBackground.withOpacity(.72),
+                    kBackground.withOpacity(.56),
+                    kBackground.withOpacity(.92),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [.02, .46, 1],
+                ),
+              ),
+            ),
+          ),
           Positioned(
             right: -54,
             top: 43,
@@ -619,9 +640,11 @@ class NextMatchShowcase extends StatelessWidget {
               ),
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(15, 16, 15, 15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
           Row(
             children: [
               const Icon(Icons.bolt_rounded, color: kGold, size: 18),
@@ -738,7 +761,8 @@ class NextMatchShowcase extends StatelessWidget {
               ),
             ),
           ],
-            ],
+              ],
+            ),
           ),
         ],
       ),
