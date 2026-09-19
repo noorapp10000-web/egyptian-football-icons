@@ -467,6 +467,8 @@ class _StandingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMasry = row.isMasry || row.team.name.contains('المصري');
     final rankColor = row.rank == 1 ? kGold : row.rank <= 4 ? kPrimary : kMuted;
+    final goalDifference = row.goalDifference ??
+        ((row.goalsFor ?? 0) - (row.goalsAgainst ?? 0));
     return Container(
       margin: const EdgeInsets.only(top: 7),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -535,8 +537,8 @@ class _StandingRow extends StatelessWidget {
           ),
           _RowStat(value: row.played.toString()),
           _RowStat(
-            value: (row.goalDifference ?? 0).toString(),
-            positive: (row.goalDifference ?? 0) >= 0,
+            value: goalDifference > 0 ? '+$goalDifference' : goalDifference.toString(),
+            positive: goalDifference >= 0,
           ),
           Container(
             width: 40,
