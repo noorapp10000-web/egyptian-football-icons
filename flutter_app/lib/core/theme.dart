@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 const kBackground = Color(0xff071912);
 const kCard = Color(0xff0d271d);
@@ -11,6 +12,9 @@ const kMuted = Color(0xff91aa9c);
 const kLine = Color(0xff244738);
 
 ThemeData buildAppTheme() {
+  final typography = GoogleFonts.tajawalTextTheme(
+    ThemeData.dark().textTheme,
+  ).apply(bodyColor: kInk, displayColor: kInk);
   final scheme =
       ColorScheme.fromSeed(
         seedColor: kPrimary,
@@ -28,8 +32,9 @@ ThemeData buildAppTheme() {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
+    textTheme: typography,
+    fontFamily: GoogleFonts.tajawal().fontFamily,
     scaffoldBackgroundColor: kBackground,
-    fontFamily: 'Cairo',
     visualDensity: VisualDensity.standard,
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
@@ -47,7 +52,6 @@ ThemeData buildAppTheme() {
         color: kInk,
         fontSize: 17,
         fontWeight: FontWeight.w900,
-        fontFamily: 'Cairo',
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
