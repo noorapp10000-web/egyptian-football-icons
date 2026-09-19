@@ -1310,6 +1310,7 @@ class _MatchFilterPill extends StatelessWidget {
 class SquadScreen extends StatelessWidget {
   const SquadScreen({super.key, required this.api});
   final ApiClient api;
+
   String group(String p) {
     final normalized = p.trim().toLowerCase();
     if (normalized.contains('حارس') || normalized.contains('goalkeeper')) {
@@ -1338,51 +1339,46 @@ class SquadScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DataPage<List<Player>>(
-    title: 'قائمة الفريق',
+    title: 'الفريق الأول',
     icon: Icons.groups,
     load: api.getSquad,
     builder: (players) {
       final scorers = [...players]
         ..sort((a, b) => (b.goals ?? 0).compareTo(a.goals ?? 0));
+      final totalGoals = players.fold<int>(
+        0,
+        (total, player) => total + (player.goals ?? 0),
+      );
       final groups = <String, List<Player>>{};
       for (final p in players)
         groups.putIfAbsent(group(p.position), () => []).add(p);
       return ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 32),
         children: [
-          const SectionCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: BrandMark(size: 54),
-              title: Text(
-                'الفريق الأول للنادي المصري',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-              subtitle: Text('الجهاز الفني وقائمة اللاعبين'),
-            ),
+          _SquadHero(
+            playerCount: players.length,
+            totalGoals: totalGoals,
+            topScorer: scorers.isEmpty ? null : scorers.first,
           ),
-          const SizedBox(height: 16),
-          const SectionTitle(icon: Icons.gps_fixed, title: 'هدافو الفريق'),
-          const SizedBox(height: 8),
-          ...scorers
-              .take(5)
-              .toList()
-              .asMap()
-              .entries
-              .map(
-                (e) => ListTile(
-                  leading: CachedAvatar(url: e.value.photoUrl, size: 34),
-                  title: Text(e.value.name),
-                  trailing: Text(
-                    '${e.value.goals ?? 0} هدف',
-                    style: const TextStyle(
-                      color: kGold,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  onTap: () => openPlayer(context, e.value.id),
+          if (scorers.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _SquadSpotlight(player: scorers.first),
+          ],
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              const Expanded(
+                child: SectionTitle(
+                  icon: Icons.groups_2_outlined,
+                  title: 'قائمة الفريق',
                 ),
               ),
+              Text(
+                '${players.length} لاعب',
+                style: const TextStyle(color: kMuted, fontSize: 11),
+              ),
+            ],
+          ),
           for (final title in [
             'حراس المرمى',
             'الدفاع',
@@ -1391,17 +1387,41 @@ class SquadScreen extends StatelessWidget {
             'لاعبون آخرون',
           ])
             if (groups[title]?.isNotEmpty ?? false) ...[
-              const SizedBox(height: 16),
-              SectionTitle(icon: Icons.groups_outlined, title: title),
-              const SizedBox(height: 8),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 5,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: title == 'حراس المرمى' ? kGold : kPrimary,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${groups[title]!.length}',
+                    style: const TextStyle(color: kMuted, fontSize: 11),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: .82,
+                   crossAxisSpacing: 11,
+                   mainAxisSpacing: 11,
+                   childAspectRatio: .74,
                 ),
                 itemCount: groups[title]!.length,
                 itemBuilder: (_, i) => PlayerCard(player: groups[title]![i]),
@@ -1411,6 +1431,267 @@ class SquadScreen extends StatelessWidget {
         ],
       );
     },
+  );
+}
+
+class _SquadHero extends StatelessWidget {
+  const _SquadHero({
+    required this.playerCount,
+    required this.totalGoals,
+    required this.topScorer,
+  });
+  final int playerCount;
+  final int totalGoals;
+  final Player? topScorer;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(28),
+      gradient: const LinearGradient(
+        colors: [Color(0xff1b6947), Color(0xff0b281d), Color(0xff071912)],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        stops: [0, .56, 1],
+      ),
+      border: Border.all(color: kPrimary.withOpacity(.3)),
+      boxShadow: [
+        BoxShadow(
+          color: kPrimary.withOpacity(.1),
+          blurRadius: 28,
+          offset: const Offset(0, 14),
+        ),
+      ],
+    ),
+    child: Stack(
+      children: [
+        Positioned(
+          left: -18,
+          bottom: -32,
+          child: Icon(
+            Icons.shield_rounded,
+            size: 154,
+            color: Colors.white.withOpacity(.045),
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(.13),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(.2)),
+                  ),
+                  child: const BrandMark(size: 54),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MASRAWY FAN',
+                        style: TextStyle(
+                          color: kGold,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.6,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'الفريق الأول',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white.withOpacity(.7),
+                  size: 22,
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+            const Text(
+              'كل لاعب له بصمته',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'تابع نجوم المصري من أول صافرة لآخر لحظة',
+              style: TextStyle(
+                color: Colors.white.withOpacity(.68),
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(height: 17),
+            Row(
+              children: [
+                _SquadMetric(value: '$playerCount', label: 'لاعب'),
+                const SizedBox(width: 8),
+                _SquadMetric(value: '$totalGoals', label: 'هدف'),
+                const SizedBox(width: 8),
+                _SquadMetric(
+                  value: topScorer?.name ?? '—',
+                  label: 'الهداف',
+                  compact: true,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _SquadMetric extends StatelessWidget {
+  const _SquadMetric({
+    required this.value,
+    required this.label,
+    this.compact = false,
+  });
+  final String value;
+  final String label;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(.17),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(.11)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: kGold,
+              fontSize: compact ? 11 : 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _SquadSpotlight extends StatelessWidget {
+  const _SquadSpotlight({required this.player});
+  final Player player;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: () => openPlayer(context, player.id),
+    borderRadius: BorderRadius.circular(23),
+    child: Container(
+      height: 110,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(23),
+        gradient: const LinearGradient(
+          colors: [Color(0xff173e2d), Color(0xff0d251b)],
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        ),
+        border: Border.all(color: kGold.withOpacity(.26)),
+      ),
+      child: Stack(
+        children: [
+          PositionedDirectional(
+            end: -10,
+            top: -28,
+            child: Icon(
+              Icons.emoji_events_rounded,
+              size: 130,
+              color: kGold.withOpacity(.06),
+            ),
+          ),
+          PositionedDirectional(
+            end: 16,
+            bottom: 0,
+            child: CachedRemoteImage(
+              url: player.photoUrl,
+              width: 96,
+              height: 104,
+              fit: BoxFit.cover,
+              fallback: const Center(
+                child: Icon(Icons.person, size: 55, color: Colors.white24),
+              ),
+              fallbackIcon: Icons.person,
+            ),
+          ),
+          PositionedDirectional(
+            start: 16,
+            top: 15,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'هداف الفريق',
+                  style: TextStyle(
+                    color: kGold,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  player.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${player.goals ?? 0} أهداف · ${player.position}',
+                  style: const TextStyle(color: kMuted, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const PositionedDirectional(
+            start: 16,
+            bottom: 14,
+            child: Icon(Icons.arrow_back_rounded, color: Colors.white54, size: 18),
+          ),
+        ],
+      ),
+    ),
   );
 }
 
@@ -3514,20 +3795,11 @@ class PlayerDetailScreen extends StatelessWidget {
   });
   final ApiClient api;
   final int playerId;
+
   String text(dynamic v) => v?.toString() ?? '—';
-  Widget info(String label, dynamic value) => value == null
-      ? const SizedBox.shrink()
-      : ListTile(
-          dense: true,
-          title: Text(label, style: const TextStyle(color: Colors.white54)),
-          trailing: Text(
-            text(value),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        );
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('بيانات اللاعب')),
     body: FutureBuilder<Map<String, dynamic>>(
       future: api.getPlayerDetail(playerId),
       builder: (context, snapshot) {
@@ -3537,155 +3809,434 @@ class PlayerDetailScreen extends StatelessWidget {
           return const ErrorState(title: 'تعذر تحميل بيانات اللاعب حاليًا');
         final root = snapshot.data!;
         final p = ((root['player'] as Map?) ?? root).cast<String, dynamic>();
-        final totals = (p['totals'] as List?) ?? const [];
-        final comps = (p['competitions'] as List?) ?? const [];
-        final career = (p['career'] as List?) ?? const [];
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            SectionCard(
-              child: Row(
-                children: [
-                  CachedAvatar(url: p['photoUrl']?.toString(), size: 96),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          text(p['name']),
-                          style: const TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w900,
+        final totals = (p['totals'] as List?)
+                ?.whereType<Map>()
+                .map((item) => item.cast<String, dynamic>())
+                .toList() ??
+            <Map<String, dynamic>>[];
+        final comps = (p['competitions'] as List?)
+                ?.whereType<Map>()
+                .map((item) => item.cast<String, dynamic>())
+                .toList() ??
+            <Map<String, dynamic>>[];
+        final career = (p['career'] as List?)
+                ?.whereType<Map>()
+                .map((item) => item.cast<String, dynamic>())
+                .toList() ??
+            <Map<String, dynamic>>[];
+        final metrics = totals.isNotEmpty
+            ? totals
+            : [
+                {'label': 'مشاركة', 'value': p['appearances'] ?? '—'},
+                {'label': 'هدف', 'value': p['goals'] ?? '—'},
+                {'label': 'رقم', 'value': p['shirtNumber'] ?? '—'},
+              ];
+        return CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 286,
+              pinned: true,
+              backgroundColor: kCard,
+              surfaceTintColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              title: Text(
+                text(p['name']),
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              flexibleSpace: FlexibleSpaceBar(
+                background: _PlayerHero(player: p, text: text),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(14, 18, 14, 30),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  Wrap(
+                    spacing: 9,
+                    runSpacing: 9,
+                    children: metrics
+                        .map(
+                          (metric) => _PlayerMetric(
+                            value: text(metric['value']),
+                            label: text(metric['label']),
                           ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 22),
+                  const SectionTitle(
+                    icon: Icons.badge_outlined,
+                    title: 'بطاقة اللاعب',
+                  ),
+                  const SizedBox(height: 10),
+                  SectionCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        _PlayerInfoRow(label: 'النادي', value: p['club'], text: text),
+                        _PlayerInfoRow(label: 'المركز', value: p['position'], text: text),
+                        _PlayerInfoRow(
+                          label: 'رقم القميص',
+                          value: p['shirtNumber'],
+                          text: text,
                         ),
-                        Text(
-                          [
-                            p['position'],
-                            p['club'],
-                          ].where((x) => x != null).join(' · '),
-                          style: const TextStyle(color: Colors.white60),
+                        _PlayerInfoRow(
+                          label: 'الجنسية',
+                          value: p['nationality'],
+                          text: text,
                         ),
-                        Wrap(
-                          spacing: 6,
-                          children: [
-                            if (p['shirtNumber'] != null)
-                              Chip(label: Text('#${p['shirtNumber']}')),
-                            if (p['nationality'] != null)
-                              Chip(label: Text(text(p['nationality']))),
-                            if (p['availability'] != null)
-                              Chip(label: Text(text(p['availability']))),
-                          ],
+                        _PlayerInfoRow(
+                          label: 'تاريخ الميلاد',
+                          value: p['birthDate'],
+                          text: text,
+                        ),
+                        _PlayerInfoRow(
+                          label: 'مكان الميلاد',
+                          value: p['birthPlace'],
+                          text: text,
+                        ),
+                        _PlayerInfoRow(
+                          label: 'الحالة',
+                          value: p['availability'],
+                          text: text,
+                          last: true,
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            if (totals.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: totals
-                    .whereType<Map>()
-                    .map(
-                      (t) => SizedBox(
-                        width: 100,
+                  if (comps.isNotEmpty) ...[
+                    const SizedBox(height: 22),
+                    const SectionTitle(
+                      icon: Icons.query_stats_rounded,
+                      title: 'إحصائيات الموسم',
+                    ),
+                    const SizedBox(height: 10),
+                    ...comps.map(
+                      (c) => Padding(
+                        padding: const EdgeInsets.only(bottom: 9),
                         child: SectionCard(
-                          child: Column(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
                             children: [
-                              Text(
-                                text(t['value']),
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
+                              Container(
+                                width: 40,
+                                height: 40,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: kPrimary.withOpacity(.13),
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                child: const Icon(
+                                  Icons.insights_rounded,
+                                  color: kPrimary,
+                                  size: 20,
                                 ),
                               ),
-                              Text(
-                                text(t['label']),
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white54,
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      text(c['competition']),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      'مشاركات ${text(c['appearances'])} · أهداف ${text(c['goals'])}',
+                                      style: const TextStyle(
+                                        color: kMuted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              Column(
+                                children: [
+                                  Text(
+                                    text(c['yellowCards']),
+                                    style: const TextStyle(
+                                      color: kGold,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'بطاقات',
+                                    style: TextStyle(color: kMuted, fontSize: 9),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
                       ),
-                    )
-                    .toList(),
-              ),
-            ],
-            const SizedBox(height: 12),
-            SectionCard(
-              child: Column(
-                children: [
-                  const SectionTitle(
-                    icon: Icons.badge_outlined,
-                    title: 'بيانات اللاعب',
-                  ),
-                  info('النادي', p['club']),
-                  info('المركز', p['position']),
-                  info('رقم القميص', p['shirtNumber']),
-                  info('الجنسية', p['nationality']),
-                  info('تاريخ الميلاد', p['birthDate']),
-                  info('مكان الميلاد', p['birthPlace']),
-                  info('الحالة', p['availability']),
-                ],
+                    ),
+                  ],
+                  if (career.isNotEmpty) ...[
+                    const SizedBox(height: 13),
+                    const SectionTitle(
+                      icon: Icons.timeline_rounded,
+                      title: 'رحلة اللاعب',
+                    ),
+                    const SizedBox(height: 10),
+                    ...career.map(
+                      (c) => Padding(
+                        padding: const EdgeInsets.only(bottom: 9),
+                        child: SectionCard(
+                          child: Row(
+                            children: [
+                              TeamLogo(
+                                url: c['toTeamCrestUrl']?.toString(),
+                                size: 42,
+                              ),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      text(c['toTeam']),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${text(c['from'])} ← ${text(c['until'])}',
+                                      style: const TextStyle(
+                                        color: kMuted,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (c['position'] != null)
+                                Text(
+                                  text(c['position']),
+                                  style: const TextStyle(
+                                    color: kPrimary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  const SourceNote(),
+                ]),
               ),
             ),
-            if (comps.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const SectionTitle(
-                icon: Icons.query_stats,
-                title: 'إحصائيات البطولات الحالية',
-              ),
-              ...comps.whereType<Map>().map(
-                (c) => SectionCard(
-                  child: ListTile(
-                    title: Text(text(c['competition'])),
-                    subtitle: Text(
-                      'مشاركات ${text(c['appearances'])} · أهداف ${text(c['goals'])}',
-                    ),
-                    trailing: Text(
-                      '🟨 ${text(c['yellowCards'])}  🟥 ${text(c['redCards'])}',
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            if (career.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const SectionTitle(
-                icon: Icons.timeline,
-                title: 'تاريخ الانتقالات',
-              ),
-              ...career.whereType<Map>().map(
-                (c) => SectionCard(
-                  child: ListTile(
-                    leading: TeamLogo(
-                      url: c['toTeamCrestUrl']?.toString(),
-                      size: 34,
-                    ),
-                    title: Text(text(c['toTeam'])),
-                    subtitle: Text(
-                      '${text(c['from'])} ← ${text(c['until'])}${c['contract'] == null ? '' : ' · ${c['contract']}'}',
-                    ),
-                    trailing: c['position'] == null
-                        ? null
-                        : Text(text(c['position'])),
-                  ),
-                ),
-              ),
-            ],
-            const SourceNote(),
           ],
         );
       },
     ),
   );
+}
+
+class _PlayerHero extends StatelessWidget {
+  const _PlayerHero({required this.player, required this.text});
+  final Map<String, dynamic> player;
+  final String Function(dynamic) text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Color(0xff1d6344), Color(0xff0a2419), Color(0xff071912)],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        stops: [0, .62, 1],
+      ),
+    ),
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        PositionedDirectional(
+          end: -25,
+          top: -34,
+          child: Icon(
+            Icons.shield_rounded,
+            size: 210,
+            color: Colors.white.withOpacity(.055),
+          ),
+        ),
+        PositionedDirectional(
+          end: 20,
+          bottom: 0,
+          child: Container(
+            width: 142,
+            height: 206,
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(72)),
+              border: Border.all(color: Colors.white.withOpacity(.13)),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withOpacity(.13),
+                  Colors.white.withOpacity(.025),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(64)),
+              child: CachedRemoteImage(
+                url: player['photoUrl']?.toString(),
+                width: 126,
+                height: 198,
+                fit: BoxFit.cover,
+                fallbackIcon: Icons.person,
+                fallback: const Center(
+                  child: Icon(
+                    Icons.person_rounded,
+                    color: Colors.white24,
+                    size: 76,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        PositionedDirectional(
+          start: 20,
+          end: 168,
+          bottom: 34,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: kGold.withOpacity(.16),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: kGold.withOpacity(.34)),
+                ),
+                child: Text(
+                  text(player['position']),
+                  style: const TextStyle(
+                    color: kGold,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 9),
+              Text(
+                text(player['name']),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  height: 1.1,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                text(player['club']),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        if (player['shirtNumber'] != null)
+          PositionedDirectional(
+            start: 20,
+            top: 92,
+            child: Text(
+              '#${text(player['shirtNumber'])}',
+              style: TextStyle(
+                color: Colors.white.withOpacity(.18),
+                fontSize: 34,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+class _PlayerMetric extends StatelessWidget {
+  const _PlayerMetric({required this.value, required this.label});
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 100,
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+    decoration: BoxDecoration(
+      color: kCard,
+      borderRadius: BorderRadius.circular(17),
+      border: Border.all(color: kLine),
+    ),
+    child: Column(
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: kGold,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(label, style: const TextStyle(color: kMuted, fontSize: 10)),
+      ],
+    ),
+  );
+}
+
+class _PlayerInfoRow extends StatelessWidget {
+  const _PlayerInfoRow({
+    required this.label,
+    required this.value,
+    required this.text,
+    this.last = false,
+  });
+  final String label;
+  final dynamic value;
+  final String Function(dynamic) text;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        border: last ? null : const Border(bottom: BorderSide(color: kLine)),
+      ),
+      child: Row(
+        children: [
+          Text(label, style: const TextStyle(color: kMuted, fontSize: 11)),
+          const Spacer(),
+          Flexible(
+            child: Text(
+              text(value),
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class DataPage<T> extends StatefulWidget {
@@ -4050,36 +4601,140 @@ class PlayerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
     clipBehavior: Clip.antiAlias,
+    margin: EdgeInsets.zero,
     child: InkWell(
       onTap: () => openPlayer(context, player.id),
       child: Column(
         children: [
           Expanded(
-            child: player.photoUrl == null
-                ? const Center(
-                    child: Icon(Icons.person, size: 60, color: Colors.white24),
-                  )
-                : CachedRemoteImage(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xff174533), Color(0xff081b13)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+                  ),
+                  child: CachedRemoteImage(
                     url: player.photoUrl,
                     width: double.infinity,
+                    height: double.infinity,
                     fit: BoxFit.cover,
                     fallbackIcon: Icons.person,
+                    fallback: const Center(
+                      child: Icon(
+                        Icons.person_rounded,
+                        size: 64,
+                        color: Colors.white24,
+                      ),
+                    ),
                   ),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(.08),
+                          Colors.black.withOpacity(.72),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0, .46, 1],
+                      ),
+                    ),
+                  ),
+                ),
+                if (player.number != null)
+                  PositionedDirectional(
+                    top: 9,
+                    end: 9,
+                    child: Container(
+                      width: 31,
+                      height: 31,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: kGold,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(.22),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${player.number}',
+                        style: const TextStyle(
+                          color: Color(0xff1a2210),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                PositionedDirectional(
+                  start: 11,
+                  bottom: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(.25),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: Colors.white.withOpacity(.15)),
+                    ),
+                    child: Text(
+                      player.position,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(11, 10, 11, 11),
+            color: kCard,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   player.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  '${player.position}${player.number == null ? '' : ' · #${player.number}'}',
-                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    const Icon(Icons.sports_soccer, size: 13, color: kGold),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${player.goals ?? 0} أهداف',
+                      style: const TextStyle(color: kMuted, fontSize: 10),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Icons.arrow_back_rounded,
+                      size: 15,
+                      color: kPrimary,
+                    ),
+                  ],
                 ),
               ],
             ),
