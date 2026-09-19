@@ -1,5 +1,7 @@
 // ignore_for_file: deprecated_member_use, curly_braces_in_flow_control_structures
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -55,7 +57,7 @@ class _AppShellState extends State<AppShell> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'ALMASRY SC',
+                   'Masrawy fan',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -175,137 +177,103 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int refresh = 0;
   ApiClient get api => widget.api;
+
+  late Future<List<Match>> _matchesFuture;
+  late Future<List<NewsItem>> _newsFuture;
+  Timer? _clock;
+  DateTime _now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _clock?.cancel();
+    super.dispose();
+  }
+
+  void _loadData() {
+    _matchesFuture = api.getMatches();
+    _newsFuture = api.getNews();
+  }
+
+  Future<void> _refresh() async {
+    setState(_loadData);
+    await Future.wait([_matchesFuture, _newsFuture]);
+  }
+
+  Match? _nextMatch(List<Match> matches) {
+    final candidates = matches
+        .where((match) => match.isLive || match.status == 'upcoming')
+        .toList();
+    candidates.sort((a, b) {
+      if (a.isLive && !b.isLive) return -1;
+      if (!a.isLive && b.isLive) return 1;
+      final aDate = DateTime.tryParse(a.kickoff ?? '');
+      final bDate = DateTime.tryParse(b.kickoff ?? '');
+      if (aDate == null || bDate == null) return 0;
+      return aDate.compareTo(bDate);
+    });
+    return candidates.isEmpty ? null : candidates.first;
+  }
+
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: () async => setState(() => refresh++),
+      color: kPrimary,
+      backgroundColor: kCard,
+      onRefresh: _refresh,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
-          SectionCard(
-            gradient: true,
-            padding: const EdgeInsets.fromLTRB(16, 17, 16, 15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const BrandMark(size: 58),
-                    const SizedBox(width: 13),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'النادي المصري البورسعيدي',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'كل ما يخص المصري في شاشة واحدة',
-                            style: TextStyle(fontSize: 11, color: kMuted),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: kGold.withOpacity(.14),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: kGold.withOpacity(.28)),
-                      ),
-                      child: const Text(
-                        'بورسعيد',
-                        style: TextStyle(
-                          color: kGold,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: const [
-                    Expanded(
-                      child: QuickTile(
-                        icon: Icons.sports_soccer_rounded,
-                        label: 'المباريات',
-                        color: kPrimary,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: QuickTile(
-                        icon: Icons.auto_graph_rounded,
-                        label: 'الترتيب',
-                        color: kGold,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: QuickTile(
-                        icon: Icons.history_rounded,
-                        label: 'التاريخ',
-                        color: kLive,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
+          const _HomeHeader(),
           FutureBuilder<List<Match>>(
-            future: api.getMatches(),
+            future: _matchesFuture,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting)
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const LoadingCard();
-              if (snapshot.hasError)
-                return ErrorCard(message: 'تعذر تحميل المباراة القادمة');
-              final matches = snapshot.data ?? [];
-              final next = matches
-                  .where((m) => m.isLive || m.status == 'upcoming')
-                  .firstOrNull;
+              }
+              if (snapshot.hasError) {
+                return const ErrorCard(message: 'تعذر تحميل المباراة القادمة');
+              }
+              final next = _nextMatch(snapshot.data ?? const <Match>[]);
               return next == null
-                  ? const SectionCard(
-                      child: Text('لا توجد مباراة قادمة معلنة حاليًا'),
-                    )
-                  : NextMatchCard(match: next);
+                  ? const _NoUpcomingMatch()
+                  : NextMatchShowcase(match: next, now: _now);
             },
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           FutureBuilder<List<Match>>(
-            future: api.getMatches(),
+            future: _matchesFuture,
             builder: (context, snapshot) {
               final data = snapshot.data ?? [];
               final recent = data.where((m) => m.isPlayed).take(4).toList();
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SectionTitle(
-                    icon: Icons.sports_soccer,
+                  const _HomeSectionHeading(
+                    eyebrow: 'ملخص الجولة',
                     title: 'آخر النتائج',
+                    icon: Icons.scoreboard_outlined,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 11),
                   if (snapshot.connectionState == ConnectionState.waiting)
                     const LoadingCard()
                   else if (recent.isEmpty)
-                    const SectionCard(child: Text('لا توجد نتائج متاحة حاليًا'))
+                    const SectionCard(
+                      child: Text('لا توجد نتائج متاحة حاليًا'),
+                    )
                   else
                     ...recent.map(
                       (match) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: 9),
                         child: MatchListTile(match: match),
                       ),
                     ),
@@ -313,187 +281,24 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 18),
-          FutureBuilder<List<Standing>>(
-            future: api.getStandings(),
+          const SizedBox(height: 15),
+          FutureBuilder<List<NewsItem>>(
+            future: _newsFuture,
             builder: (context, snapshot) {
-              final all = snapshot.data ?? <Standing>[];
-              final masryIndex = all.indexWhere((row) => row.isMasry);
-              final maxStart = (all.length - 5).clamp(0, all.length);
-              final start = masryIndex < 0
-                  ? 0
-                  : (masryIndex - 2).clamp(0, maxStart);
-              final rows = all.skip(start).take(5);
+              final news = (snapshot.data ?? <NewsItem>[]).take(2).toList();
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SectionTitle(
-                    icon: Icons.list_alt,
-                    title: 'ترتيب المصري في الدوري',
+                  const _HomeSectionHeading(
+                    eyebrow: 'من قلب المدرجات',
+                    title: 'آخر الأخبار',
+                    icon: Icons.auto_stories_outlined,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 11),
                   if (snapshot.connectionState == ConnectionState.waiting)
                     const LoadingCard()
                   else
-                    SectionCard(
-                      child: Column(
-                        children: rows
-                            .map(
-                              (row) => ListTile(
-                                dense: true,
-                                leading: SizedBox(
-                                  width: 58,
-                                  child: Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 20,
-                                        child: Text(
-                                          '${row.rank}',
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.white54,
-                                          ),
-                                        ),
-                                      ),
-                                      TeamLogo(
-                                        url: row.team.crestUrl,
-                                        size: 26,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                title: Text(
-                                  row.team.name,
-                                  style: TextStyle(
-                                    fontWeight: row.isMasry
-                                        ? FontWeight.w900
-                                        : FontWeight.w600,
-                                    color: row.isMasry ? kPrimary : null,
-                                  ),
-                                ),
-                                trailing: Text('${row.points} نقطة'),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 18),
-          FutureBuilder<List<Player>>(
-            future: api.getSquad(),
-            builder: (context, snapshot) {
-              final players = [...(snapshot.data ?? <Player>[])];
-              players.sort((a, b) => (b.goals ?? 0).compareTo(a.goals ?? 0));
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionTitle(
-                    icon: Icons.gps_fixed,
-                    title: 'هدافو الفريق',
-                  ),
-                  const SizedBox(height: 8),
-                  ...players
-                      .where((player) => (player.goals ?? 0) > 0)
-                      .take(5)
-                      .toList()
-                      .asMap()
-                      .entries
-                      .map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 7),
-                          child: SectionCard(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 8,
-                            ),
-                            child: InkWell(
-                              onTap: () => openPlayer(context, entry.value.id),
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: 20,
-                                    child: Text(
-                                      '${entry.key + 1}',
-                                      style: const TextStyle(
-                                        color: kGold,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                  CachedAvatar(
-                                    url: entry.value.photoUrl,
-                                    size: 38,
-                                  ),
-                                  const SizedBox(width: 9),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          entry.value.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                        Text(
-                                          entry.value.position,
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.white54,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: kGold.withOpacity(.13),
-                                      borderRadius: BorderRadius.circular(7),
-                                    ),
-                                    child: Text(
-                                      '${entry.value.goals ?? 0} ⚽',
-                                      style: const TextStyle(
-                                        color: kGold,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 18),
-          FutureBuilder<List<NewsItem>>(
-            future: api.getNews(),
-            builder: (context, snapshot) {
-              final news = (snapshot.data ?? <NewsItem>[]).take(4);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionTitle(
-                    icon: Icons.newspaper,
-                    title: 'آخر الأخبار',
-                  ),
-                  const SizedBox(height: 8),
-                  ...news.map(
+                    ...news.map(
                     (item) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: NewsCard(item: item),
@@ -508,6 +313,372 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: Row(
+      children: [
+        const BrandMark(size: 50),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Masrawy fan',
+                style: TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -.3,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'كل نبضة من المصري في مكانها',
+                style: TextStyle(
+                  color: kMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+          decoration: BoxDecoration(
+            color: kPrimary.withOpacity(.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: kPrimary.withOpacity(.24)),
+          ),
+          child: const Icon(
+            Icons.waves_rounded,
+            color: kPrimary,
+            size: 18,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HomeSectionHeading extends StatelessWidget {
+  const _HomeSectionHeading({
+    required this.eyebrow,
+    required this.title,
+    required this.icon,
+  });
+
+  final String eyebrow;
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+      Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: kPrimary.withOpacity(.13),
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Icon(icon, color: kPrimary, size: 18),
+      ),
+      const SizedBox(width: 9),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            eyebrow,
+            style: const TextStyle(
+              color: kPrimary,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+class _NoUpcomingMatch extends StatelessWidget {
+  const _NoUpcomingMatch();
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+    gradient: true,
+    padding: const EdgeInsets.all(18),
+    child: Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: kPrimary.withOpacity(.13),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.event_available_rounded, color: kPrimary),
+        ),
+        const SizedBox(width: 13),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'المباراة القادمة',
+                style: TextStyle(color: kGold, fontSize: 11),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'لسه مفيش مباراة معلنة',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'هنبلغك أول ما الموعد يتحدد',
+                style: TextStyle(color: kMuted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class NextMatchShowcase extends StatelessWidget {
+  const NextMatchShowcase({super.key, required this.match, required this.now});
+
+  final Match match;
+  final DateTime now;
+
+  DateTime? get kickoff => DateTime.tryParse(match.kickoff ?? '')?.toLocal();
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = kickoff?.difference(now);
+    final isLive = match.isLive || (remaining != null && remaining.isNegative);
+    final safeRemaining = remaining == null || remaining.isNegative
+        ? Duration.zero
+        : remaining;
+
+    return SectionCard(
+      gradient: true,
+      padding: const EdgeInsets.fromLTRB(15, 16, 15, 15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bolt_rounded, color: kGold, size: 18),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'المباراة القادمة',
+                  style: TextStyle(
+                    color: kGold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isLive
+                      ? kLive.withOpacity(.14)
+                      : kPrimary.withOpacity(.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  isLive ? 'مباشر الآن' : 'استعد',
+                  style: TextStyle(
+                    color: isLive ? kLive : kPrimary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          Text(
+            match.competition,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: kMuted, fontSize: 11),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(child: TeamColumn(team: match.homeTeam)),
+              Container(
+                width: 43,
+                height: 43,
+                decoration: BoxDecoration(
+                  color: kBackground.withOpacity(.56),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: kPrimary.withOpacity(.25)),
+                ),
+                alignment: Alignment.center,
+                child: const Text(
+                  'VS',
+                  style: TextStyle(
+                    color: kPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Expanded(child: TeamColumn(team: match.awayTeam)),
+            ],
+          ),
+          const SizedBox(height: 15),
+          if (isLive)
+            const _LiveMatchMessage()
+          else
+            _CountdownRow(duration: safeRemaining),
+          if (match.formattedKickoff != null || match.venue != null) ...[
+            const SizedBox(height: 13),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+              decoration: BoxDecoration(
+                color: kBackground.withOpacity(.36),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (match.formattedKickoff != null) ...[
+                    const Icon(
+                      Icons.schedule_rounded,
+                      color: kMuted,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      match.formattedKickoff!,
+                      style: const TextStyle(color: kMuted, fontSize: 10),
+                    ),
+                  ],
+                  if (match.formattedKickoff != null && match.venue != null)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Text('•', style: TextStyle(color: kLine)),
+                    ),
+                  if (match.venue != null) ...[
+                    const Icon(Icons.place_outlined, color: kMuted, size: 14),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        match.venue!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: kMuted, fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CountdownRow extends StatelessWidget {
+  const _CountdownRow({required this.duration});
+
+  final Duration duration;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = [
+      ('يوم', duration.inDays),
+      ('ساعة', duration.inHours.remainder(24)),
+      ('دقيقة', duration.inMinutes.remainder(60)),
+      ('ثانية', duration.inSeconds.remainder(60)),
+    ];
+    return Row(
+      children: values
+          .map(
+            (item) => Expanded(
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(start: 4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: kBackground.withOpacity(.53),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: kLine.withOpacity(.7)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        item.$2.toString().padLeft(2, '0'),
+                        style: const TextStyle(
+                          color: kInk,
+                          fontSize: 20,
+                          height: 1.1,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.$1,
+                        style: const TextStyle(color: kMuted, fontSize: 9),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _LiveMatchMessage extends StatelessWidget {
+  const _LiveMatchMessage();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    decoration: BoxDecoration(
+      color: kLive.withOpacity(.1),
+      borderRadius: BorderRadius.circular(13),
+      border: Border.all(color: kLive.withOpacity(.24)),
+    ),
+    child: const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.radio_button_checked_rounded, color: kLive, size: 16),
+        SizedBox(width: 7),
+        Text(
+          'المباراة جارية الآن — تابع كل لحظة',
+          style: TextStyle(color: kLive, fontSize: 11, fontWeight: FontWeight.w800),
+        ),
+      ],
+    ),
+  );
 }
 
 class MatchesScreen extends StatefulWidget {
