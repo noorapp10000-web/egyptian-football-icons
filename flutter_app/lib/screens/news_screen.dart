@@ -57,7 +57,7 @@ class _NewsScreenState extends State<NewsScreen> {
       final query = _query.toLowerCase();
       final news = allNews.where((item) {
         if (query.isEmpty) return true;
-        return (item.title + ' ' + item.sourceName).toLowerCase().contains(query);
+        return ('${item.title} ${item.sourceName}').toLowerCase().contains(query);
       }).toList();
 
       return RefreshIndicator(
@@ -138,7 +138,7 @@ class _NewsIntro extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                count.toString() + ' خبر متاح للقراءة الآن',
+                '${count.toString()} خبر متاح للقراءة الآن',
                 style: const TextStyle(
                   color: Colors.white60,
                   fontSize: 10,
