@@ -249,6 +249,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   : NextMatchShowcase(match: next, now: _now);
             },
           ),
+          const SizedBox(height: 12),
+          const _FanSignalStrip(),
           const SizedBox(height: 24),
           FutureBuilder<List<Match>>(
             future: _matchesFuture,
@@ -320,46 +322,158 @@ class _HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
-    child: Row(
-      children: [
-        const BrandMark(size: 50),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Masrawy fan',
-                style: TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -.3,
-                ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                'كل نبضة من المصري في مكانها',
-                style: TextStyle(
-                  color: kMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+    padding: const EdgeInsets.only(bottom: 16),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(27),
+      child: Container(
+        height: 158,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xff1d6547), Color(0xff0d2d21), kBackground],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            stops: [0, .48, 1],
           ),
         ),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            Positioned(
+              left: -46,
+              bottom: -75,
+              child: Container(
+                width: 205,
+                height: 205,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(.07), width: 20),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -20,
+              top: -45,
+              child: Container(
+                width: 145,
+                height: 145,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: kGold.withOpacity(.16), width: 1),
+                ),
+              ),
+            ),
+            PositionedDirectional(
+              end: 16,
+              bottom: -8,
+              child: Opacity(
+                opacity: .15,
+                child: const BrandMark(size: 118),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 17, 18, 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.graphic_eq_rounded, color: kGold, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        'MASRAWY FAN',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(.78),
+                          fontSize: 10,
+                          letterSpacing: 2.1,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(.1),
+                          borderRadius: BorderRadius.circular(99),
+                          border: Border.all(color: Colors.white.withOpacity(.15)),
+                        ),
+                        child: const Text(
+                          'بورسعيد',
+                          style: TextStyle(
+                            color: kInk,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'الماتش يبدأ هنا.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      height: 1.1,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'عيش اللحظة قبل صافرة البداية',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(.68),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _FanSignalStrip extends StatelessWidget {
+  const _FanSignalStrip();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+    decoration: BoxDecoration(
+      color: kPrimary.withOpacity(.08),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: kPrimary.withOpacity(.16)),
+    ),
+    child: Row(
+      children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+          width: 27,
+          height: 27,
           decoration: BoxDecoration(
-            color: kPrimary.withOpacity(.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: kPrimary.withOpacity(.24)),
+            color: kPrimary.withOpacity(.16),
+            shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.waves_rounded,
-            color: kPrimary,
-            size: 18,
+          child: const Icon(Icons.rss_feed_rounded, color: kPrimary, size: 14),
+        ),
+        const SizedBox(width: 9),
+        const Expanded(
+          child: Text(
+            'كل تحديث يوصلك في وقته',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+          ),
+        ),
+        const Text(
+          'جاهز للماتش؟',
+          style: TextStyle(
+            color: kGold,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
           ),
         ),
       ],
@@ -478,9 +592,36 @@ class NextMatchShowcase extends StatelessWidget {
     return SectionCard(
       gradient: true,
       padding: const EdgeInsets.fromLTRB(15, 16, 15, 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
         children: [
+          Positioned(
+            right: -54,
+            top: 43,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: kPrimary.withOpacity(.12), width: 18),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -58,
+            bottom: 72,
+            child: Container(
+              width: 115,
+              height: 115,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: kGold.withOpacity(.1), width: 1),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           Row(
             children: [
               const Icon(Icons.bolt_rounded, color: kGold, size: 18),
@@ -597,6 +738,8 @@ class NextMatchShowcase extends StatelessWidget {
               ),
             ),
           ],
+            ],
+          ),
         ],
       ),
     );
@@ -625,9 +768,23 @@ class _CountdownRow extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
-                    color: kBackground.withOpacity(.53),
+                    gradient: LinearGradient(
+                      colors: [
+                        kBackground.withOpacity(.72),
+                        kCardAlt.withOpacity(.48),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: kLine.withOpacity(.7)),
+                    border: Border.all(color: kPrimary.withOpacity(.22)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: kBackground.withOpacity(.24),
+                        blurRadius: 12,
+                        offset: const Offset(0, 7),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
