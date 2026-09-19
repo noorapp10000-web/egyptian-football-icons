@@ -2549,7 +2549,10 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
             final liveEvent = timeline
                 .where((event) => event.minute != null)
                 .fold<int?>(null, (latest, event) {
-              if (latest == null || event.minute! > latest) return event.minute;
+              if (event.minute != null &&
+                  (latest == null || event.minute! > latest!)) {
+                return event.minute;
+              }
               return latest;
             });
             final hasLineups =
