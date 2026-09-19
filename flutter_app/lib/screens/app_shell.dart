@@ -1617,7 +1617,7 @@ class _SquadMetric extends StatelessWidget {
   );
 }
 
-class _SquadSpotlight extends StatelessWidget {
+ class _SquadSpotlight extends StatelessWidget {
   const _SquadSpotlight({required this.player});
   final Player player;
 
@@ -1626,77 +1626,179 @@ class _SquadSpotlight extends StatelessWidget {
     onTap: () => openPlayer(context, player.id),
     borderRadius: BorderRadius.circular(23),
     child: Container(
-      height: 110,
+      height: 132,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(23),
-        gradient: const LinearGradient(
-          colors: [Color(0xff173e2d), Color(0xff0d251b)],
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xff1b5039),
+            const Color(0xff102f22),
+            kBackground.withOpacity(.96),
+          ],
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
+          stops: const [.05, .56, 1],
         ),
-        border: Border.all(color: kGold.withOpacity(.26)),
+        border: Border.all(color: kGold.withOpacity(.34)),
+        boxShadow: [
+          BoxShadow(
+            color: kBackground.withOpacity(.22),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Stack(
         children: [
           PositionedDirectional(
-            end: -10,
-            top: -28,
+            end: -18,
+            top: -38,
             child: Icon(
               Icons.emoji_events_rounded,
-              size: 130,
-              color: kGold.withOpacity(.06),
+              size: 150,
+              color: kGold.withOpacity(.055),
             ),
           ),
           PositionedDirectional(
-            end: 16,
-            bottom: 0,
-            child: CachedRemoteImage(
-              url: player.photoUrl,
-              width: 96,
-              height: 104,
-              fit: BoxFit.cover,
-              fallback: const Center(
-                child: Icon(Icons.person, size: 55, color: Colors.white24),
+            end: 12,
+            top: 10,
+            bottom: 10,
+            child: Container(
+              width: 104,
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: kBackground.withOpacity(.55),
+                borderRadius: BorderRadius.circular(19),
+                border: Border.all(color: Colors.white.withOpacity(.18)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(.18),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
-              fallbackIcon: Icons.person,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: CachedRemoteImage(
+                  url: player.photoUrl,
+                  width: 94,
+                  height: 112,
+                  fit: BoxFit.cover,
+                  fallback: const Center(
+                    child: Icon(
+                      Icons.person_rounded,
+                      size: 55,
+                      color: Colors.white24,
+                    ),
+                  ),
+                  fallbackIcon: Icons.person,
+                ),
+              ),
             ),
           ),
           PositionedDirectional(
-            start: 16,
-            top: 15,
+            start: 18,
+            end: 132,
+            top: 16,
+            bottom: 15,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'هداف الفريق',
-                  style: TextStyle(
-                    color: kGold,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: kGold.withOpacity(.14),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: kGold.withOpacity(.3)),
+                      ),
+                      child: const Text(
+                        'هداف الفريق',
+                        style: TextStyle(
+                          color: kGold,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Icons.trending_up_rounded,
+                      color: kGold,
+                      size: 18,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 5),
+                const Spacer(),
                 Text(
                   player.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 17,
+                    fontSize: 19,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${player.goals ?? 0} أهداف · ${player.position}',
-                  style: const TextStyle(color: kMuted, fontSize: 11),
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${player.goals ?? 0} أهداف',
+                        style: const TextStyle(
+                          color: kInk,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Flexible(
+                      child: Text(
+                        player.position,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: kMuted, fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'عرض الملف',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(.62),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          const PositionedDirectional(
-            start: 16,
-            bottom: 14,
-            child: Icon(Icons.arrow_back_rounded, color: Colors.white54, size: 18),
           ),
         ],
       ),
@@ -4279,19 +4381,53 @@ class _PlayerInfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (value == null) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         border: last ? null : const Border(bottom: BorderSide(color: kLine)),
       ),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(color: kMuted, fontSize: 11)),
-          const Spacer(),
-          Flexible(
-            child: Text(
-              text(value),
-              textAlign: TextAlign.end,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+          Expanded(
+            flex: 5,
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(.72),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: kMuted, fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            flex: 6,
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Text(
+                text(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: const TextStyle(
+                  color: kInk,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
           ),
         ],
