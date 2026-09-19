@@ -4173,30 +4173,6 @@ class _MatchCardCenter extends StatelessWidget {
   }
 }
 
-class _MatchTeamBlock extends StatelessWidget {
-  const _MatchTeamBlock({required this.team, required this.align});
-  final Team team;
-  final CrossAxisAlignment align;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: align,
-        children: [
-          TeamLogo(url: team.crestUrl, size: 43),
-          const SizedBox(height: 7),
-          Text(
-            team.name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: align == CrossAxisAlignment.end
-                ? TextAlign.right
-                : TextAlign.left,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
-          ),
-        ],
-      );
-}
-
 class MetaLine extends StatelessWidget {
   const MetaLine({super.key, required this.icon, required this.text});
   final IconData icon;
