@@ -4,6 +4,30 @@ import 'package:flutter/material.dart';
 import '../core/app_config.dart';
 import '../core/theme.dart';
 
+String _imageSource(String? value) {
+  final source = value?.trim();
+  if (source == null || source.isEmpty) return '';
+
+  final uri = Uri.tryParse(source);
+  const imageHosts = {
+    'filgoal.com',
+    'www.filgoal.com',
+    'media.filgoal.com',
+    'semedia.filgoal.com',
+  };
+  if (uri == null ||
+      uri.scheme != 'https' ||
+      !imageHosts.contains(uri.host.toLowerCase())) {
+    return source;
+  }
+
+  final proxyBase =
+      '${AppConfig.apiBaseUrl.replaceFirst(RegExp(r'/$'), '')}/football/image';
+  return Uri.parse(proxyBase)
+      .replace(queryParameters: {'url': source})
+      .toString();
+}
+
 class CachedRemoteImage extends StatelessWidget {
   const CachedRemoteImage({
     super.key,
@@ -24,70 +48,31 @@ class CachedRemoteImage extends StatelessWidget {
   final IconData fallbackIcon;
   final Widget? fallback;
 
-  Widget _fallback() =>
-      fallback ??
-      Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [kCardAlt, kCard],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ),
-          border: Border.all(color: kLine),
-        ),
-        alignment: Alignment.center,
-        child: Icon(fallbackIcon, color: kPrimary.withValues(alpha: .42)),
-      );
-
-  String? _normalizedUrl(String? value) {
-    final raw = value?.trim();
-    if (raw == null || raw.isEmpty) return null;
-    final withScheme = raw.startsWith('//') ? 'https:$raw' : raw;
-    final uri = Uri.tryParse(withScheme);
-    if (uri == null || uri.host.isEmpty) return null;
-
-    // FilGoal blocks some direct mobile requests. The API proxy adds the
-    // source headers server-side and keeps the UI independent from that host.
-    final host = uri.host.toLowerCase();
-    if ((host == 'filgoal.com' || host.endsWith('.filgoal.com')) &&
-        !withScheme.startsWith(AppConfig.apiBaseUrl)) {
-      return '${AppConfig.apiBaseUrl}/football/image?url=${Uri.encodeComponent(withScheme)}';
-    }
-    return withScheme;
-  }
+  Widget _fallback() => fallback ?? Container(
+    width: width,
+    height: height,
+    color: kCardAlt,
+    alignment: Alignment.center,
+    child: Icon(fallbackIcon, color: Colors.white30),
+  );
 
   @override
   Widget build(BuildContext context) {
-    final source = _normalizedUrl(url);
-    final child = source == null || source.isEmpty
+    final source = _imageSource(url);
+    final child = source.isEmpty
         ? _fallback()
         : CachedNetworkImage(
             imageUrl: source,
             width: width,
             height: height,
             fit: fit,
-            filterQuality: FilterQuality.medium,
-            useOldImageOnUrlChange: true,
-            httpHeaders: const {
-              'Accept':
-                  'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-              'User-Agent': 'AlmasrySC/1.0 (Flutter)',
-            },
             fadeInDuration: const Duration(milliseconds: 180),
             memCacheWidth: width == null ? null : (width! * 3).round(),
             memCacheHeight: height == null ? null : (height! * 3).round(),
             placeholder: (_, __) => Container(
               width: width,
               height: height,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [kCardAlt, kCard],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                ),
-              ),
+              color: kCardAlt,
               alignment: Alignment.center,
               child: const SizedBox(
                 width: 18,
