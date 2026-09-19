@@ -2549,10 +2549,9 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
             final liveEvent = timeline
                 .where((event) => event.minute != null)
                 .fold<int?>(null, (latest, event) {
-              if (event.minute != null &&
-                  (latest == null || event.minute! > latest!)) {
-                return event.minute;
-              }
+              final minute = event.minute;
+              if (minute == null) return latest;
+              if (latest == null || minute > latest) return minute;
               return latest;
             });
             final hasLineups =
@@ -2850,23 +2849,6 @@ class _DetailInfoPill extends StatelessWidget {
           ],
         ),
       );
-}
-
-class _MatchMeta extends StatelessWidget {
-  const _MatchMeta({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 16, color: kPrimary),
-      const SizedBox(width: 5),
-      Text(text, style: const TextStyle(color: Colors.white60, fontSize: 11)),
-    ],
-  );
 }
 
 class _EventsTab extends StatelessWidget {
