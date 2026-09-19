@@ -315,18 +315,54 @@ class Standing {
   final int? goalsFor;
   final int? goalsAgainst;
 
-  factory Standing.fromJson(Map<String, dynamic> json) => Standing(
-    rank: (json['rank'] as num?)?.toInt() ?? 0,
-    team: Team.fromJson(
-      (json['team'] as Map?)?.cast<String, dynamic>() ?? const {},
-    ),
-    played: (json['played'] as num?)?.toInt() ?? 0,
-    points: (json['points'] as num?)?.toInt() ?? 0,
-    isMasry: json['isMasry'] as bool? ?? false,
-    goalDifference: (json['goalDifference'] as num?)?.toInt(),
-    goalsFor: (json['goalsFor'] as num?)?.toInt(),
-    goalsAgainst: (json['goalsAgainst'] as num?)?.toInt(),
-  );
+  factory Standing.fromJson(Map<String, dynamic> json) {
+    final goalsFor = _firstInt(json, const [
+      'goalsFor',
+      'goalsScored',
+      'scored',
+      'gf',
+    ]);
+    final goalsAgainst = _firstInt(json, const [
+      'goalsAgainst',
+      'goalsConceded',
+      'conceded',
+      'ga',
+    ]);
+    final suppliedDifference = _firstInt(json, const [
+      'goalDifference',
+      'goalsDifference',
+      'difference',
+      'gd',
+    ]);
+    return Standing(
+      rank: _firstInt(json, const ['rank', 'position']) ?? 0,
+      team: Team.fromJson(
+        (json['team'] as Map?)?.cast<String, dynamic>() ?? const {},
+      ),
+      played: _firstInt(json, const ['played', 'matchesPlayed', 'playedGames']) ?? 0,
+      points: _firstInt(json, const ['points', 'pts']) ?? 0,
+      isMasry: json['isMasry'] as bool? ?? false,
+      goalDifference: suppliedDifference ?? (goalsFor != null && goalsAgainst != null
+          ? goalsFor - goalsAgainst
+          : null),
+      goalsFor: goalsFor,
+      goalsAgainst: goalsAgainst,
+    );
+  }
+}
+
+int? _firstInt(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value is num) return value.toInt();
+    if (value is String) {
+      final parsed = int.tryParse(
+        value.replaceAll(RegExp('[^0-9-]'), ''),
+      );
+      if (parsed != null) return parsed;
+    }
+  }
+  return null;
 }
 
 class Player {
