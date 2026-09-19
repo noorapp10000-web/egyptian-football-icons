@@ -685,7 +685,7 @@ class _StandingsError extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: onRetry,
+            onPressed: () { onRetry(); },
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('إعادة المحاولة'),
           ),
