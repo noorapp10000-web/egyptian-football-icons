@@ -24,6 +24,14 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int index = 0;
   final api = ApiClient();
+  static const pageTitles = [
+    'ناديك في كل لحظة',
+    'مركز المباريات',
+    'جدول المنافسة',
+    'الفريق الأول',
+    'نبض الأخبار',
+    'ذاكرة المصري',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -38,17 +46,31 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 14,
-        title: const Row(
+        title: Row(
           children: [
-            BrandMark(size: 28),
-            SizedBox(width: 8),
-            Text(
-              'ALMASRY SC',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: .6,
-              ),
+            const BrandMark(size: 28),
+            const SizedBox(width: 9),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'ALMASRY SC',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .6,
+                  ),
+                ),
+                Text(
+                  pageTitles[index],
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: kMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -66,11 +88,16 @@ class _AppShellState extends State<AppShell> {
                   ),
                 ),
               ),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: kPrimary.withOpacity(.13),
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: kPrimary.withOpacity(.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: kPrimary.withOpacity(.22)),
+                ),
                 child: const Icon(
-                  Icons.notifications_none,
+                  Icons.notifications_none_rounded,
                   size: 18,
                   color: kPrimary,
                 ),
@@ -87,7 +114,14 @@ class _AppShellState extends State<AppShell> {
                 offline ? const OfflineBanner() : const SizedBox.shrink(),
           ),
           Expanded(
-            child: IndexedStack(index: index, children: pages),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 240),
+              child: IndexedStack(
+                key: ValueKey(index),
+                index: index,
+                children: pages,
+              ),
+            ),
           ),
         ],
       ),
@@ -150,27 +184,83 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
         children: [
-          const SectionCard(
+          SectionCard(
             gradient: true,
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(16, 17, 16, 15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                BrandMark(size: 54),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'النادي المصري البورسعيدي',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                Row(
+                  children: [
+                    const BrandMark(size: 58),
+                    const SizedBox(width: 13),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'النادي المصري البورسعيدي',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            'كل ما يخص المصري في شاشة واحدة',
+                            style: TextStyle(fontSize: 11, color: kMuted),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 3),
-                      Text(
-                        'مباريات · ترتيب · لاعبون · أخبار',
-                        style: TextStyle(fontSize: 10, color: Colors.white54),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 6,
                       ),
-                    ],
-                  ),
+                      decoration: BoxDecoration(
+                        color: kGold.withOpacity(.14),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: kGold.withOpacity(.28)),
+                      ),
+                      child: const Text(
+                        'بورسعيد',
+                        style: TextStyle(
+                          color: kGold,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: const [
+                    Expanded(
+                      child: QuickTile(
+                        icon: Icons.sports_soccer_rounded,
+                        label: 'المباريات',
+                        color: kPrimary,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: QuickTile(
+                        icon: Icons.auto_graph_rounded,
+                        label: 'الترتيب',
+                        color: kGold,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: QuickTile(
+                        icon: Icons.history_rounded,
+                        label: 'التاريخ',
+                        color: kLive,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -257,9 +347,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                     children: [
                                       SizedBox(
                                         width: 20,
-                                        child: Text('${row.rank}', style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                                        child: Text(
+                                          '${row.rank}',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.white54,
+                                          ),
+                                        ),
                                       ),
-                                      TeamLogo(url: row.team.crestUrl, size: 26),
+                                      TeamLogo(
+                                        url: row.team.crestUrl,
+                                        size: 26,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -306,27 +405,70 @@ class _HomeScreenState extends State<HomeScreen> {
                         (entry) => Padding(
                           padding: const EdgeInsets.only(bottom: 7),
                           child: SectionCard(
-                            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 11,
+                              vertical: 8,
+                            ),
                             child: InkWell(
                               onTap: () => openPlayer(context, entry.value.id),
                               child: Row(
                                 children: [
-                                  SizedBox(width: 20, child: Text('${entry.key + 1}', style: const TextStyle(color: kGold, fontWeight: FontWeight.w900))),
-                                  CachedAvatar(url: entry.value.photoUrl, size: 38),
+                                  SizedBox(
+                                    width: 20,
+                                    child: Text(
+                                      '${entry.key + 1}',
+                                      style: const TextStyle(
+                                        color: kGold,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                  CachedAvatar(
+                                    url: entry.value.photoUrl,
+                                    size: 38,
+                                  ),
                                   const SizedBox(width: 9),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(entry.value.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-                                        Text(entry.value.position, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                                        Text(
+                                          entry.value.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        Text(
+                                          entry.value.position,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.white54,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(color: kGold.withOpacity(.13), borderRadius: BorderRadius.circular(7)),
-                                    child: Text('${entry.value.goals ?? 0} ⚽', style: const TextStyle(color: kGold, fontSize: 11, fontWeight: FontWeight.w900)),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: kGold.withOpacity(.13),
+                                      borderRadius: BorderRadius.circular(7),
+                                    ),
+                                    child: Text(
+                                      '${entry.value.goals ?? 0} ⚽',
+                                      style: const TextStyle(
+                                        color: kGold,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -458,7 +600,10 @@ class TableScreen extends StatelessWidget {
               ...standings.map(
                 (row) => Container(
                   color: row.isMasry ? kPrimary.withOpacity(.12) : null,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
                       _StandingCell('${row.rank}', width: 28, bold: true),
@@ -1599,9 +1744,8 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     _future = widget.api.getMatchDetail(widget.matchId);
   }
 
-  void _retry() => setState(
-    () => _future = widget.api.getMatchDetail(widget.matchId),
-  );
+  void _retry() =>
+      setState(() => _future = widget.api.getMatchDetail(widget.matchId));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -1612,10 +1756,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
         if (snapshot.connectionState == ConnectionState.waiting)
           return const LoadingCard();
         if (snapshot.hasError || snapshot.data == null) {
-          return ErrorState(
-            title: 'تفاصيل المباراة',
-            onRetry: _retry,
-          );
+          return ErrorState(title: 'تفاصيل المباراة', onRetry: _retry);
         }
         final detail = MatchDetailData.fromJson(snapshot.data!);
         final match = detail.match;
@@ -1762,67 +1903,55 @@ class _EventsTab extends StatelessWidget {
   final Team awayTeam;
 
   @override
-  Widget build(BuildContext context) => events.isEmpty
-      ? const _DetailTabPlaceholder(
-          message: 'لا توجد أحداث مسجلة لهذه المباراة.',
-        )
-      : ListView(
-          padding: const EdgeInsets.only(top: 12),
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final homeEvents = _eventsForTeam(events, homeTeam);
-                final awayEvents = _eventsForTeam(events, awayTeam);
-                final neutralEvents = events
-                    .where(
-                      (event) =>
-                          !_belongsTo(event, homeTeam) &&
-                          !_belongsTo(event, awayTeam),
-                    )
-                    .toList();
-                final panels = [
-                  _TeamEventsPanel(team: homeTeam, events: homeEvents),
-                  _TeamEventsPanel(team: awayTeam, events: awayEvents),
-                ];
-                final grouped = constraints.maxWidth >= 660
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: panels[0]),
-                          const SizedBox(width: 10),
-                          Expanded(child: panels[1]),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          panels[0],
-                          const SizedBox(height: 10),
-                          panels[1],
-                        ],
-                      );
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget build(BuildContext context) {
+    if (events.isEmpty) {
+      return const _DetailTabPlaceholder(
+        message: 'لا توجد أحداث مسجلة لهذه المباراة.',
+      );
+    }
+    final ordered = [...events]
+      ..sort((a, b) => (a.minute ?? 999).compareTo(b.minute ?? 999));
+    return ListView(
+      padding: const EdgeInsets.only(top: 12),
+      children: [
+        SectionCard(
+          padding: const EdgeInsets.fromLTRB(12, 13, 12, 8),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Column(
+              children: [
+                Row(
                   children: [
-                    grouped,
-                    if (neutralEvents.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      _TeamEventsPanel(
-                        title: 'أحداث المباراة',
-                        events: neutralEvents,
+                    Expanded(
+                      child: _TimelineTeamHeader(
+                        team: awayTeam,
+                        alignment: CrossAxisAlignment.start,
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 42),
+                    Expanded(
+                      child: _TimelineTeamHeader(
+                        team: homeTeam,
+                        alignment: CrossAxisAlignment.end,
+                      ),
+                    ),
                   ],
-                );
-              },
+                ),
+                const SizedBox(height: 8),
+                for (final event in ordered)
+                  _TimelineEventRow(
+                    event: event,
+                    home: _belongsTo(event, homeTeam),
+                    away: _belongsTo(event, awayTeam),
+                  ),
+              ],
             ),
-          ],
-        );
+          ),
+        ),
+      ],
+    );
+  }
 }
-
-List<MatchEventModel> _eventsForTeam(
-  List<MatchEventModel> events,
-  Team team,
-) => events.where((event) => _belongsTo(event, team)).toList();
 
 bool _belongsTo(MatchEventModel event, Team team) {
   if (event.teamId != null && team.id != null) return event.teamId == team.id;
@@ -1831,98 +1960,160 @@ bool _belongsTo(MatchEventModel event, Team team) {
   return eventName != null && eventName.isNotEmpty && eventName == teamName;
 }
 
-class _TeamEventsPanel extends StatelessWidget {
-  const _TeamEventsPanel({this.team, this.title, required this.events});
+class _TimelineTeamHeader extends StatelessWidget {
+  const _TimelineTeamHeader({required this.team, required this.alignment});
 
-  final Team? team;
-  final String? title;
-  final List<MatchEventModel> events;
+  final Team team;
+  final CrossAxisAlignment alignment;
 
   @override
-  Widget build(BuildContext context) => SectionCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            if (team != null) ...[
-              TeamLogo(url: team!.crestUrl, size: 28),
-              const SizedBox(width: 8),
-            ],
-            Expanded(
-              child: Text(
-                title ?? team?.name ?? 'أحداث المباراة',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-            Text(
-              '${events.length}',
-              style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w900),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (events.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Text(
-              'لا توجد أحداث',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-          )
-        else
-          for (final event in events) ...[
-            _EventTile(event: event),
-            if (event != events.last) const Divider(height: 1),
-          ],
-      ],
-    ),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: alignment,
+    children: [
+      TeamLogo(url: team.crestUrl, size: 34),
+      const SizedBox(height: 5),
+      Text(
+        team.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: alignment == CrossAxisAlignment.end
+            ? TextAlign.right
+            : TextAlign.left,
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+      ),
+    ],
   );
 }
 
-class _EventTile extends StatelessWidget {
-  const _EventTile({required this.event});
+class _TimelineEventRow extends StatelessWidget {
+  const _TimelineEventRow({
+    required this.event,
+    required this.home,
+    required this.away,
+  });
+
+  final MatchEventModel event;
+  final bool home;
+  final bool away;
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = _TimelineEventTile(event: event);
+    return SizedBox(
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: away
+                  ? Align(alignment: Alignment.centerLeft, child: tile)
+                  : const SizedBox.shrink(),
+            ),
+            SizedBox(
+              width: 42,
+              child: Column(
+                children: [
+                  Expanded(child: Container(width: 1, color: kLine)),
+                  Container(
+                    width: 34,
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    decoration: BoxDecoration(
+                      color: kCardAlt,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: kLine),
+                    ),
+                    child: Text(
+                      event.minute == null
+                          ? '—'
+                          : '${event.minute}${event.addedTime == null ? '' : '+${event.addedTime}'}’',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: kGold,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Container(width: 1, color: kLine)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: home
+                  ? Align(alignment: Alignment.centerRight, child: tile)
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineEventTile extends StatelessWidget {
+  const _TimelineEventTile({required this.event});
 
   final MatchEventModel event;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    dense: true,
-    leading: CircleAvatar(
-      radius: 16,
-      backgroundColor: _eventColor(event.type).withOpacity(.16),
-      child: Icon(
-        _eventIcon(event.type),
-        size: 16,
-        color: _eventColor(event.type),
+  Widget build(BuildContext context) {
+    final color = _eventColor(event.type);
+    final details = [
+      if (event.player != null) event.player!,
+      if (event.relatedPlayer != null) event.relatedPlayer!,
+    ].join(' · ');
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+      decoration: BoxDecoration(
+        color: kCardAlt,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: color.withOpacity(.28)),
       ),
-    ),
-    title: Text(
-      _eventLabel(event.type),
-      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-    ),
-    subtitle: Text(
-      [
-        if (event.player != null) event.player!,
-        if (event.relatedPlayer != null) event.relatedPlayer!,
-        if (event.text != null) event.text!,
-      ].join(' · '),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(color: Colors.white60, fontSize: 11),
-    ),
-    trailing: Text(
-      event.minute == null
-          ? '—'
-          : '${event.minute}${event.addedTime == null ? '' : '+${event.addedTime}'}’',
-      style: const TextStyle(
-        color: Colors.white54,
-        fontWeight: FontWeight.w900,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 25,
+            height: 25,
+            decoration: BoxDecoration(
+              color: color.withOpacity(.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(_eventIcon(event.type), size: 14, color: color),
+          ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _eventLabel(event.type),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (details.isNotEmpty || event.text != null)
+                  Text(
+                    details.isNotEmpty ? details : event.text!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: kMuted,
+                      fontSize: 9,
+                      height: 1.3,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _StatsTab extends StatelessWidget {
@@ -2775,18 +2966,33 @@ class NewsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (item.imageUrl != null)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-              child: CachedRemoteImage(
-                url: item.imageUrl,
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: CachedRemoteImage(
+              url: item.imageUrl,
+              height: hero ? 240 : 170,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              fallbackIcon: Icons.article_outlined,
+              fallback: Container(
                 height: hero ? 240 : 170,
                 width: double.infinity,
-                fit: BoxFit.cover,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xff1b4d38), Color(0xff0d271d)],
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.article_outlined,
+                  size: 42,
+                  color: Colors.white24,
+                ),
               ),
             ),
+          ),
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -2803,6 +3009,8 @@ class NewsCard extends StatelessWidget {
                 const SizedBox(height: 7),
                 Text(
                   item.title,
+                  maxLines: hero ? 3 : 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
@@ -2887,15 +3095,23 @@ class SectionCard extends StatelessWidget {
     child: Container(
       width: double.infinity,
       padding: padding,
-      decoration: gradient
-          ? const BoxDecoration(
-              gradient: LinearGradient(
+      decoration: BoxDecoration(
+        gradient: gradient
+            ? const LinearGradient(
                 colors: [Color(0xff194633), kCard],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-              ),
-            )
-          : null,
+              )
+            : null,
+        boxShadow: [
+          if (gradient)
+            BoxShadow(
+              color: kPrimary.withOpacity(.08),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+        ],
+      ),
       child: child,
     ),
   );
@@ -2980,21 +3196,37 @@ class StatusBadge extends StatelessWidget {
   final Match match;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: match.isLive ? kLive.withOpacity(.16) : kPrimary.withOpacity(.12),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      match.statusText,
-      style: TextStyle(
-        fontSize: 10,
-        color: match.isLive ? kLive : kPrimary,
-        fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final color = match.isLive ? kLive : kPrimary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(.12),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: color.withOpacity(.2)),
       ),
-    ),
-  );
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (match.isLive)
+            Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsetsDirectional.only(end: 5),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+          Text(
+            match.statusText,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class QuickTile extends StatelessWidget {
@@ -3010,7 +3242,7 @@ class QuickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 154,
+    width: double.infinity,
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
       color: color.withOpacity(.11),
@@ -3021,9 +3253,12 @@ class QuickTile extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: color),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+        Expanded(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+          ),
         ),
       ],
     ),
