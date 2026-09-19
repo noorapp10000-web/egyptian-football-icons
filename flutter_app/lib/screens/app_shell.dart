@@ -18,6 +18,8 @@ import 'standings_screen.dart';
 
 const teamCrest = 'assets/images/team_crest.png';
 const matchCardBackground = 'assets/images/match_card_background.png';
+const supportersBackground = 'assets/images/supporters_background.jpg';
+const teamSquadBackground = 'assets/images/team_squad_background.jpg';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -1449,8 +1451,20 @@ class _SquadHero extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(28),
+      image: const DecorationImage(
+        image: AssetImage(teamSquadBackground),
+        fit: BoxFit.cover,
+        colorFilter: ColorFilter.mode(
+          Color(0xaa071912),
+          BlendMode.darken,
+        ),
+      ),
       gradient: const LinearGradient(
-        colors: [Color(0xff1b6947), Color(0xff0b281d), Color(0xff071912)],
+        colors: [
+          Color(0xd91b6947),
+          Color(0xe60b281d),
+          Color(0xf5071912),
+        ],
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
         stops: [0, .56, 1],
@@ -1514,11 +1528,6 @@ class _SquadHero extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  color: Colors.white.withOpacity(.7),
-                  size: 22,
                 ),
               ],
             ),
@@ -3814,11 +3823,6 @@ class PlayerDetailScreen extends StatelessWidget {
                 .map((item) => item.cast<String, dynamic>())
                 .toList() ??
             <Map<String, dynamic>>[];
-        final comps = (p['competitions'] as List?)
-                ?.whereType<Map>()
-                .map((item) => item.cast<String, dynamic>())
-                .toList() ??
-            <Map<String, dynamic>>[];
         final career = (p['career'] as List?)
                 ?.whereType<Map>()
                 .map((item) => item.cast<String, dynamic>())
@@ -3873,6 +3877,69 @@ class PlayerDetailScreen extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     child: Column(
                       children: [
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                kPrimary.withOpacity(.14),
+                                Colors.transparent,
+                              ],
+                              begin: AlignmentDirectional.centerStart,
+                              end: AlignmentDirectional.centerEnd,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: kGold.withOpacity(.15),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: kGold.withOpacity(.38),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.person_pin_rounded,
+                                  color: kGold,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 11),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'ملف اللاعب',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    SizedBox(height: 3),
+                                    Text(
+                                      'تفاصيله داخل وخارج الملعب',
+                                      style: TextStyle(
+                                        color: kMuted,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.verified_rounded,
+                                color: kPrimary.withOpacity(.8),
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1, color: kLine),
                         _PlayerInfoRow(label: 'النادي', value: p['club'], text: text),
                         _PlayerInfoRow(label: 'المركز', value: p['position'], text: text),
                         _PlayerInfoRow(
@@ -3904,77 +3971,6 @@ class PlayerDetailScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (comps.isNotEmpty) ...[
-                    const SizedBox(height: 22),
-                    const SectionTitle(
-                      icon: Icons.query_stats_rounded,
-                      title: 'إحصائيات الموسم',
-                    ),
-                    const SizedBox(height: 10),
-                    ...comps.map(
-                      (c) => Padding(
-                        padding: const EdgeInsets.only(bottom: 9),
-                        child: SectionCard(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: kPrimary.withOpacity(.13),
-                                  borderRadius: BorderRadius.circular(13),
-                                ),
-                                child: const Icon(
-                                  Icons.insights_rounded,
-                                  color: kPrimary,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 11),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      text(c['competition']),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 5),
-                                    Text(
-                                      'مشاركات ${text(c['appearances'])} · أهداف ${text(c['goals'])}',
-                                      style: const TextStyle(
-                                        color: kMuted,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                children: [
-                                  Text(
-                                    text(c['yellowCards']),
-                                    style: const TextStyle(
-                                      color: kGold,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const Text(
-                                    'بطاقات',
-                                    style: TextStyle(color: kMuted, fontSize: 9),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                   if (career.isNotEmpty) ...[
                     const SizedBox(height: 13),
                     const SectionTitle(
@@ -3982,15 +3978,46 @@ class PlayerDetailScreen extends StatelessWidget {
                       title: 'رحلة اللاعب',
                     ),
                     const SizedBox(height: 10),
-                    ...career.map(
-                      (c) => Padding(
+                    ...career.asMap().entries.map(
+                      (entry) {
+                        final c = entry.value;
+                        final isLast = entry.key == career.length - 1;
+                        return Padding(
                         padding: const EdgeInsets.only(bottom: 9),
                         child: SectionCard(
+                          padding: const EdgeInsets.fromLTRB(13, 14, 13, 14),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              TeamLogo(
-                                url: c['toTeamCrestUrl']?.toString(),
-                                size: 42,
+                              Column(
+                                children: [
+                                  Container(
+                                    width: 46,
+                                    height: 46,
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(.06),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: kLine),
+                                    ),
+                                    child: TeamLogo(
+                                      url: c['toTeamCrestUrl']?.toString(),
+                                      size: 34,
+                                    ),
+                                  ),
+                                  if (!isLast)
+                                    Container(
+                                      width: 2,
+                                      height: 33,
+                                      margin: const EdgeInsets.symmetric(
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: kPrimary.withOpacity(.45),
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                ],
                               ),
                               const SizedBox(width: 11),
                               Expanded(
@@ -4011,6 +4038,27 @@ class PlayerDetailScreen extends StatelessWidget {
                                         fontSize: 10,
                                       ),
                                     ),
+                                    if (c['contract'] != null) ...[
+                                      const SizedBox(height: 7),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(.1),
+                                          borderRadius: BorderRadius.circular(7),
+                                        ),
+                                        child: Text(
+                                          text(c['contract']),
+                                          style: const TextStyle(
+                                            color: kPrimary,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -4026,7 +4074,8 @@ class PlayerDetailScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                      ),
+                        );
+                      },
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -4049,8 +4098,20 @@ class _PlayerHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: const BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage(supportersBackground),
+        fit: BoxFit.cover,
+        colorFilter: ColorFilter.mode(
+          Color(0xb8071912),
+          BlendMode.darken,
+        ),
+      ),
       gradient: LinearGradient(
-        colors: [Color(0xff1d6344), Color(0xff0a2419), Color(0xff071912)],
+        colors: [
+          Color(0xd91d6344),
+          Color(0xe60a2419),
+          Color(0xf5071912),
+        ],
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
         stops: [0, .62, 1],
