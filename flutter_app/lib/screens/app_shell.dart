@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_font.dart';
 import '../core/theme.dart';
 import '../models/football_models.dart';
 import '../models/history_content.dart';
@@ -3655,6 +3656,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     },
   );
   bool loading = true;
+  AppFont selectedFont = AppFontController.instance.value;
 
   @override
   void initState() {
@@ -3721,6 +3723,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionTitle(
+                icon: Icons.text_fields_rounded,
+                title: 'شكل الخط',
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'اختر الخط المفضل لك، وسيتم تطبيقه على كل شاشات التطبيق.',
+                style: TextStyle(fontSize: 12, color: kMuted),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<AppFont>(
+                value: selectedFont,
+                decoration: const InputDecoration(
+                  labelText: 'الخط المستخدم',
+                  prefixIcon: Icon(Icons.font_download_outlined),
+                ),
+                items: AppFont.values
+                    .map(
+                      (font) => DropdownMenuItem(
+                        value: font,
+                        child: Text(
+                          font.label,
+                          style: TextStyle(fontFamily: font.family),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (font) {
+                  if (font == null) return;
+                  setState(() => selectedFont = font);
+                  AppFontController.instance.setFont(font);
+                },
               ),
             ],
           ),

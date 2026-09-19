@@ -75,6 +75,26 @@ flutter:
     - assets/images/team_squad_background.jpg
     - assets/images/history/
 
+  fonts:
+    - family: Amiri
+      fonts:
+        - asset: assets/fonts/amiri/Amiri-Regular.ttf
+        - asset: assets/fonts/amiri/Amiri-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/amiri/Amiri-Italic.ttf
+          style: italic
+        - asset: assets/fonts/amiri/Amiri-BoldItalic.ttf
+          weight: 700
+          style: italic
+    - family: ArefRuqaa
+      fonts:
+        - asset: assets/fonts/aref_ruqaa/ArefRuqaa-Regular.ttf
+        - asset: assets/fonts/aref_ruqaa/ArefRuqaa-Bold.ttf
+          weight: 700
+    - family: Rakkas
+      fonts:
+        - asset: assets/fonts/rakkas/Rakkas-Regular.ttf
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
