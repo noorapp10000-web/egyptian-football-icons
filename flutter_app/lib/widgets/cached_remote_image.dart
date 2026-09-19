@@ -93,6 +93,12 @@ class CachedRemoteImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final source = _imageSource(url);
+    final cacheWidth = width != null && width!.isFinite && width! > 0
+        ? (width! * 3).round()
+        : null;
+    final cacheHeight = height != null && height!.isFinite && height! > 0
+        ? (height! * 3).round()
+        : null;
     final child = source.isEmpty
         ? _fallback()
         : CachedNetworkImage(
@@ -101,8 +107,8 @@ class CachedRemoteImage extends StatelessWidget {
             height: height,
             fit: fit,
             fadeInDuration: const Duration(milliseconds: 180),
-            memCacheWidth: width == null ? null : (width! * 3).round(),
-            memCacheHeight: height == null ? null : (height! * 3).round(),
+            memCacheWidth: cacheWidth,
+            memCacheHeight: cacheHeight,
             placeholder: (_, __) => Container(
               width: width,
               height: height,
