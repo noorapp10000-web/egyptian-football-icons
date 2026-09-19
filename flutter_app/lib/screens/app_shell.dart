@@ -2133,26 +2133,26 @@ class _HistoryNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SectionCard(
     gradient: true,
-    padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
+    padding: const EdgeInsets.fromLTRB(10, 11, 10, 10),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: 29,
+              height: 29,
               decoration: BoxDecoration(
                 color: kGold.withOpacity(.13),
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(9),
               ),
               child: const Icon(
                 Icons.auto_stories_rounded,
                 color: kGold,
-                size: 18,
+                size: 16,
               ),
             ),
-            const SizedBox(width: 9),
+            const SizedBox(width: 8),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2161,20 +2161,20 @@ class _HistoryNav extends StatelessWidget {
                     'بوابات الأرشيف',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  SizedBox(height: 1),
                   Text(
                     'اختار فصلًا من ذاكرة النسور الخضراء',
-                    style: TextStyle(color: Colors.white54, fontSize: 10),
+                    style: TextStyle(color: Colors.white54, fontSize: 9),
                   ),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
               decoration: BoxDecoration(
                 color: kPrimary.withOpacity(.11),
                 borderRadius: BorderRadius.circular(99),
@@ -2184,23 +2184,23 @@ class _HistoryNav extends StatelessWidget {
                 '9 أقسام',
                 style: TextStyle(
                   color: kPrimary,
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 9),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: tabs.length,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 1.05,
+            crossAxisSpacing: 6,
+            mainAxisSpacing: 6,
+            childAspectRatio: 1.5,
           ),
           itemBuilder: (_, index) {
             final active = selected == index;
@@ -2210,15 +2210,15 @@ class _HistoryNav extends StatelessWidget {
               label: tabs[index].$1,
               child: InkWell(
                 onTap: () => onChanged(index),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(13),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
                   decoration: BoxDecoration(
                     color: active
                         ? kPrimary.withOpacity(.2)
                         : kBackground.withOpacity(.32),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(13),
                     border: Border.all(
                       color: active ? kPrimary : kLine,
                       width: active ? 1.4 : 1,
@@ -2238,10 +2238,10 @@ class _HistoryNav extends StatelessWidget {
                     children: [
                       Icon(
                         tabs[index].$2,
-                        size: 21,
+                        size: 17,
                         color: active ? kGold : Colors.white54,
                       ),
-                      const SizedBox(height: 7),
+                      const SizedBox(height: 3),
                       Text(
                         tabs[index].$1,
                         maxLines: 2,
@@ -2249,7 +2249,7 @@ class _HistoryNav extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: active ? kInk : Colors.white70,
-                          fontSize: 10,
+                          fontSize: 9,
                           height: 1.15,
                           fontWeight: FontWeight.w900,
                         ),
