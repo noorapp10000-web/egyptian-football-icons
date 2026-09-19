@@ -37,7 +37,7 @@ class MasrawyFanApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'ALMASRY SC',
+    title: 'Masrawy fan',
     debugShowCheckedModeBanner: false,
     theme: buildAppTheme(),
     locale: const Locale('ar'),
@@ -87,7 +87,7 @@ class SplashScreen extends StatelessWidget {
           BrandMark(size: 132),
           SizedBox(height: 22),
           Text(
-            'ALMASRY SC',
+             'Masrawy fan',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w900,
@@ -97,7 +97,7 @@ class SplashScreen extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'النادي المصري البورسعيدي',
+             'كل نبضة من المصري في مكانها',
             style: TextStyle(color: kPrimary, fontSize: 13),
           ),
           SizedBox(height: 26),
