@@ -1842,8 +1842,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     children: [
       const _HistoryHero(),
       const SizedBox(height: 14),
-      const _HistoryMetrics(),
-      const SizedBox(height: 20),
       _HistoryNav(
         tabs: tabs,
         selected: selected,
@@ -1892,8 +1890,8 @@ class _HistoryHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 238,
-    padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+    height: 340,
+    padding: EdgeInsets.zero,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(28),
       gradient: const LinearGradient(
@@ -1912,8 +1910,30 @@ class _HistoryHero extends StatelessWidget {
       ],
     ),
     child: Stack(
-      clipBehavior: Clip.none,
+      clipBehavior: Clip.hardEdge,
       children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/history/archive_hero.jpg',
+            fit: BoxFit.cover,
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  kBackground.withOpacity(.14),
+                  kBackground.withOpacity(.38),
+                  kBackground.withOpacity(.94),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0, .42, 1],
+              ),
+            ),
+          ),
+        ),
         Positioned(
           left: -30,
           bottom: -42,
@@ -1938,9 +1958,11 @@ class _HistoryHero extends StatelessWidget {
             ),
           ),
         ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               children: [
                 const BrandMark(size: 48),
@@ -1967,7 +1989,7 @@ class _HistoryHero extends StatelessWidget {
                     border: Border.all(color: kGold.withOpacity(.34)),
                   ),
                   child: const Text(
-                    '1920 — 2026',
+                    '1920 — الآن',
                     style: TextStyle(
                       color: kGold,
                       fontSize: 10,
@@ -2014,49 +2036,70 @@ class _HistoryHero extends StatelessWidget {
                 ),
               ],
             ),
-          ],
+            const SizedBox(height: 14),
+            Row(
+              children: const [
+                Expanded(
+                  child: _HistoryMetric(
+                    value: '106',
+                    label: 'عامًا من الذاكرة',
+                    hero: true,
+                  ),
+                ),
+                SizedBox(width: 7),
+                Expanded(
+                  child: _HistoryMetric(
+                    value: '1',
+                    label: 'كأس مصر',
+                    hero: true,
+                  ),
+                ),
+                SizedBox(width: 7),
+                Expanded(
+                  child: _HistoryMetric(
+                    value: '1',
+                    label: 'كأس عاصمة مصر',
+                    hero: true,
+                  ),
+                ),
+              ],
+            ),
+            ],
+          ),
         ),
       ],
     ),
   );
 }
 
-class _HistoryMetrics extends StatelessWidget {
-  const _HistoryMetrics();
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: const [
-      Expanded(child: _HistoryMetric(value: '106', label: 'عامًا من الذاكرة')),
-      SizedBox(width: 8),
-      Expanded(child: _HistoryMetric(value: '17', label: 'لقبًا في القناة')),
-      SizedBox(width: 8),
-      Expanded(child: _HistoryMetric(value: '89', label: 'هدفًا للضظوي')),
-    ],
-  );
-}
-
 class _HistoryMetric extends StatelessWidget {
-  const _HistoryMetric({required this.value, required this.label});
+  const _HistoryMetric({
+    required this.value,
+    required this.label,
+    this.hero = false,
+  });
 
   final String value;
   final String label;
+  final bool hero;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
     decoration: BoxDecoration(
-      color: kCard,
+      color: hero ? kBackground.withOpacity(.58) : kCard,
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: kLine),
+      border: Border.all(
+        color: hero ? Colors.white.withOpacity(.18) : kLine,
+      ),
     ),
     child: Column(
       children: [
         Text(
           value,
           style: const TextStyle(
-            color: kPrimary,
-            fontSize: 22,
+            color: kGold,
+            fontSize: 21,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -2065,7 +2108,11 @@ class _HistoryMetric extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.white60, fontSize: 9),
+          style: TextStyle(
+            color: hero ? Colors.white70 : Colors.white60,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     ),
@@ -2084,69 +2131,138 @@ class _HistoryNav extends StatelessWidget {
   final ValueChanged<int> onChanged;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'استكشف الأرشيف',
-        style: TextStyle(
-          color: Colors.white54,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          letterSpacing: .7,
-        ),
-      ),
-      const SizedBox(height: 9),
-      SizedBox(
-        height: 78,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          reverse: true,
-          itemCount: tabs.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (_, index) => InkWell(
-            onTap: () => onChanged(index),
-            borderRadius: BorderRadius.circular(17),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              width: 88,
-              padding: const EdgeInsets.all(9),
+  Widget build(BuildContext context) => SectionCard(
+    gradient: true,
+    padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: selected == index
-                    ? kPrimary.withOpacity(.16)
-                    : kCard,
-                borderRadius: BorderRadius.circular(17),
-                border: Border.all(
-                  color: selected == index ? kPrimary : kLine,
-                  width: selected == index ? 1.3 : 1,
-                ),
+                color: kGold.withOpacity(.13),
+                borderRadius: BorderRadius.circular(11),
               ),
+              child: const Icon(
+                Icons.auto_stories_rounded,
+                color: kGold,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 9),
+            const Expanded(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    tabs[index].$2,
-                    size: 20,
-                    color: selected == index ? kPrimary : Colors.white54,
-                  ),
-                  const SizedBox(height: 6),
                   Text(
-                    tabs[index].$1,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    'بوابات الأرشيف',
                     style: TextStyle(
-                      color: selected == index ? kInk : Colors.white60,
-                      fontSize: 10,
+                      color: Colors.white,
+                      fontSize: 15,
                       fontWeight: FontWeight.w900,
                     ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'اختار فصلًا من ذاكرة النسور الخضراء',
+                    style: TextStyle(color: Colors.white54, fontSize: 10),
                   ),
                 ],
               ),
             ),
-          ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: kPrimary.withOpacity(.11),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: kPrimary.withOpacity(.25)),
+              ),
+              child: const Text(
+                '9 أقسام',
+                style: TextStyle(
+                  color: kPrimary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-    ],
+        const SizedBox(height: 14),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: tabs.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 1.05,
+          ),
+          itemBuilder: (_, index) {
+            final active = selected == index;
+            return Semantics(
+              button: true,
+              selected: active,
+              label: tabs[index].$1,
+              child: InkWell(
+                onTap: () => onChanged(index),
+                borderRadius: BorderRadius.circular(16),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? kPrimary.withOpacity(.2)
+                        : kBackground.withOpacity(.32),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: active ? kPrimary : kLine,
+                      width: active ? 1.4 : 1,
+                    ),
+                    boxShadow: active
+                        ? [
+                            BoxShadow(
+                              color: kPrimary.withOpacity(.12),
+                              blurRadius: 13,
+                              offset: const Offset(0, 5),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        tabs[index].$2,
+                        size: 21,
+                        color: active ? kGold : Colors.white54,
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        tabs[index].$1,
+                        maxLines: 2,
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: active ? kInk : Colors.white70,
+                          fontSize: 10,
+                          height: 1.15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    ),
   );
 }
 
