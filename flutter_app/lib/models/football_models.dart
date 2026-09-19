@@ -1,20 +1,20 @@
 import 'package:intl/intl.dart';
 
 class Team {
-  const Team({required this.name, this.crestUrl, this.id});
+    const Team({required this.name, this.crestUrl, this.id});
 
-  final String name;
-  final String? crestUrl;
-  final int? id;
+    final String name;
+    final String? crestUrl;
+    final int? id;
 
-  factory Team.fromJson(Map<String, dynamic> json) => Team(
-    name: json['name'] as String? ?? '—',
-    crestUrl: json['crestUrl'] as String?,
-    id: (json['id'] as num?)?.toInt(),
-  );
-}
+    factory Team.fromJson(Map<String, dynamic> json) {
+      final teamName = json['name'] as String? ?? '—';
+      final crest = teamName.contains('المصري') ? 'asset://team_crest' : json['crestUrl'] as String?;
+      return Team(name: teamName, crestUrl: crest, id: (json['id'] as num?)?.toInt());
+    }
+    }
 
-class Match {
+    class Match {
   const Match({
     required this.id,
     required this.matchId,
