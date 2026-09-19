@@ -1307,35 +1307,6 @@ class _MatchFilterPill extends StatelessWidget {
 }
 
 
-class _StandingCell extends StatelessWidget {
-  const _StandingCell(
-    this.value, {
-    this.width = 27,
-    this.bold = false,
-    this.muted = false,
-  });
-
-  final String value;
-  final double width;
-  final bool bold;
-  final bool muted;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: width,
-    child: Text(
-      value,
-      maxLines: 1,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        color: muted ? Colors.white54 : Colors.white,
-        fontSize: 10,
-        fontWeight: bold ? FontWeight.w900 : FontWeight.w600,
-      ),
-    ),
-  );
-}
-
 class SquadScreen extends StatelessWidget {
   const SquadScreen({super.key, required this.api});
   final ApiClient api;
