@@ -3120,7 +3120,7 @@ class _IdentityCard extends StatelessWidget {
               Text(
                 item.body,
                 style: const TextStyle(
-                  color: Colors.white65,
+                  color: Colors.white70,
                   height: 1.55,
                   fontSize: 11,
                 ),
