@@ -2365,7 +2365,7 @@ class _TimelineCard extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 42,
@@ -2391,7 +2391,15 @@ class _TimelineCard extends StatelessWidget {
                 ),
               ),
               if (index != historyTimeline.length - 1)
-                Expanded(child: Container(width: 1, color: kLine)),
+                Container(
+                  width: 2,
+                  height: 24,
+                  margin: const EdgeInsets.only(top: 5),
+                  decoration: BoxDecoration(
+                    color: kLine,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
             ],
           ),
         ),
@@ -2657,60 +2665,164 @@ class _CupPathSection extends StatelessWidget {
         _CupStageCard(stage: stages[index], index: index),
       const SizedBox(height: 4),
       SectionCard(
-        padding: EdgeInsets.zero,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: SizedBox(
-            height: 205,
-            child: PageView(
+        gradient: true,
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                for (final image in historyGallery)
-                  Stack(
-                    fit: StackFit.expand,
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: kGold.withOpacity(.15),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: const Icon(
+                    Icons.photo_library_rounded,
+                    color: kGold,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 9),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Image.asset(
-                        historyAsset(image),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const ColoredBox(
-                          color: kCardAlt,
-                          child: Icon(
-                            Icons.photo_library_outlined,
-                            color: kPrimary,
-                            size: 40,
-                          ),
+                      Text(
+                        'ليلة التتويج',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(14, 30, 14, 12),
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.transparent, Color(0xdd071912)],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                          child: Text(
-                            image.replaceAll('.webp', ''),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
+                      SizedBox(height: 2),
+                      Text(
+                        'أربع لقطات من رحلة كأس عاصمة مصر',
+                        style: TextStyle(color: Colors.white54, fontSize: 10),
                       ),
                     ],
                   ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: kGold.withOpacity(.12),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: kGold.withOpacity(.3)),
+                  ),
+                  child: const Text(
+                    '4 صور',
+                    style: TextStyle(
+                      color: kGold,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 13),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: historyGallery.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1.12,
+              ),
+              itemBuilder: (_, index) => _CupGalleryTile(
+                image: historyGallery[index],
+                index: index,
+              ),
+            ),
+          ],
         ),
       ),
     ],
+  );
+}
+
+class _CupGalleryTile extends StatelessWidget {
+  const _CupGalleryTile({required this.image, required this.index});
+
+  final String image;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(15),
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          historyAsset(image),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const ColoredBox(
+            color: kCardAlt,
+            child: Icon(
+              Icons.photo_library_outlined,
+              color: kPrimary,
+              size: 34,
+            ),
+          ),
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.transparent, Color(0xe6071912)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: kBackground.withOpacity(.72),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(.2)),
+            ),
+            child: Text(
+              '${index + 1}',
+              style: const TextStyle(
+                color: kGold,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 9,
+          right: 9,
+          bottom: 8,
+          child: Text(
+            image.replaceAll('.webp', ''),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              height: 1.25,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }
 
