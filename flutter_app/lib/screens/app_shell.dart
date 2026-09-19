@@ -13,6 +13,8 @@ import '../services/api_client.dart';
 import '../services/offline_cache.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/cached_remote_image.dart';
+import 'news_screen.dart';
+import 'standings_screen.dart';
 
 const teamCrest = 'assets/images/team_crest.png';
 const matchCardBackground = 'assets/images/match_card_background.png';
@@ -1304,100 +1306,6 @@ class _MatchFilterPill extends StatelessWidget {
       );
 }
 
-class TableScreen extends StatelessWidget {
-  const TableScreen({super.key, required this.api});
-  final ApiClient api;
-
-  @override
-  Widget build(BuildContext context) => DataPage<List<Standing>>(
-    title: 'جدول الدوري',
-    icon: Icons.list_alt,
-    load: api.getStandings,
-    builder: (standings) => ListView(
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 28),
-      children: [
-        SectionCard(
-          padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                child: Row(
-                  children: [
-                    _StandingCell('#', width: 28, muted: true),
-                    Expanded(
-                      child: Text(
-                        'الفريق',
-                        style: TextStyle(color: Colors.white54, fontSize: 11),
-                      ),
-                    ),
-                    _StandingCell('ل', muted: true),
-                    _StandingCell('له', muted: true),
-                    _StandingCell('ع', muted: true),
-                    _StandingCell('ف', muted: true),
-                    _StandingCell('ن', width: 34, muted: true),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              ...standings.map(
-                (row) => Container(
-                  color: row.isMasry ? kPrimary.withOpacity(.12) : null,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      _StandingCell('${row.rank}', width: 28, bold: true),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            TeamLogo(url: row.team.crestUrl, size: 24),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                row.team.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: row.isMasry
-                                      ? FontWeight.w900
-                                      : FontWeight.w600,
-                                  color: row.isMasry ? kPrimary : null,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _StandingCell('${row.played}'),
-                      _StandingCell('${row.goalsFor ?? 0}'),
-                      _StandingCell('${row.goalsAgainst ?? 0}'),
-                      _StandingCell(
-                        (row.goalDifference ?? 0) > 0
-                            ? '+${row.goalDifference}'
-                            : '${row.goalDifference ?? 0}',
-                      ),
-                      _StandingCell('${row.points}', width: 34, bold: true),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'ل: لعب · له: أهداف له · ع: أهداف عليه · ف: فارق الأهداف · ن: نقاط',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white54, fontSize: 9),
-        ),
-      ],
-    ),
-  );
-}
 
 class _StandingCell extends StatelessWidget {
   const _StandingCell(
@@ -1542,36 +1450,6 @@ void openPlayer(BuildContext context, int id) => Navigator.push(
   ),
 );
 
-class NewsScreen extends StatelessWidget {
-  const NewsScreen({super.key, required this.api});
-  final ApiClient api;
-  @override
-  Widget build(BuildContext context) => DataPage<List<NewsItem>>(
-    title: 'آخر الأخبار',
-    icon: Icons.newspaper,
-    load: api.getNews,
-    builder: (news) => ListView(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-      children: [
-        if (news.isEmpty)
-          const SectionCard(child: Center(child: Text('لا توجد أخبار جديدة')))
-        else ...[
-          NewsCard(item: news.first, hero: true),
-          const SizedBox(height: 12),
-          ...news
-              .skip(1)
-              .map(
-                (n) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: NewsCard(item: n),
-                ),
-              ),
-        ],
-        const SourceNote(),
-      ],
-    ),
-  );
-}
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -4470,42 +4348,40 @@ class TeamColumn extends StatelessWidget {
 }
 
 class TeamLogo extends StatelessWidget {
-  const TeamLogo({
-    super.key,
-    required this.url,
-    this.size = 44,
-    this.tinted = false,
-  });
-  final String? url;
-  final double size;
-  final bool tinted;
+    const TeamLogo({super.key, required this.url, this.size = 44, this.tinted = false});
+    final String? url;
+    final double size;
+    final bool tinted;
 
-  @override
-  Widget build(BuildContext context) {
-    final image = SizedBox(
-      width: size,
-      height: size,
-      child: CachedRemoteImage(
-        url: url,
+    @override
+    Widget build(BuildContext context) {
+      final image = SizedBox(
         width: size,
         height: size,
-        fit: BoxFit.contain,
-        fallbackIcon: Icons.shield_outlined,
-        fallback: const BrandMark(),
-      ),
-    );
-    return tinted
-        ? ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              const Color(0xff8de5ad).withOpacity(.78),
-              BlendMode.modulate,
-            ),
-            child: image,
-          )
-        : image;
-  }
-}
+        child: url == 'asset://team_crest'
+            ? Image.asset('assets/images/team_crest.png', fit: BoxFit.contain, filterQuality: FilterQuality.high)
+            : CachedRemoteImage(
+                url: url,
+                width: size,
+                height: size,
+                fit: BoxFit.contain,
+                fallbackIcon: Icons.shield_outlined,
+                fallback: const BrandMark(),
+              ),
+      );
+      return tinted
+          ? ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                const Color(0xff8de5ad).withOpacity(.78),
+                BlendMode.modulate,
+              ),
+              child: image,
+            )
+          : image;
+    }
+    }
 
+    
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.match});
   final Match match;
