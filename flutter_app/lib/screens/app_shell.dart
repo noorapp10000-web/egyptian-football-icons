@@ -754,12 +754,13 @@ class _CountdownRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final values = [
-      ('يوم', duration.inDays),
-      ('ساعة', duration.inHours.remainder(24)),
-      ('دقيقة', duration.inMinutes.remainder(60)),
       ('ثانية', duration.inSeconds.remainder(60)),
+      ('دقيقة', duration.inMinutes.remainder(60)),
+      ('ساعة', duration.inHours.remainder(24)),
+      ('يوم', duration.inDays),
     ];
     return Row(
+      textDirection: TextDirection.rtl,
       children: values
           .map(
             (item) => Expanded(
@@ -3306,63 +3307,68 @@ class NewsCard extends StatelessWidget {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
     },
     child: SectionCard(
-      padding: EdgeInsets.zero,
-      child: Column(
+      padding: const EdgeInsets.all(15),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: CachedRemoteImage(
-              url: item.imageUrl,
-              height: hero ? 240 : 170,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              fallbackIcon: Icons.article_outlined,
-              fallback: Container(
-                height: hero ? 240 : 170,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xff1b4d38), Color(0xff0d271d)],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.article_outlined,
-                  size: 42,
-                  color: Colors.white24,
-                ),
+          Container(
+            width: hero ? 46 : 40,
+            height: hero ? 46 : 40,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xff1d6547), Color(0xff0d2d21)],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
               ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: kPrimary.withOpacity(.2)),
+            ),
+            child: Icon(
+              hero ? Icons.auto_stories_rounded : Icons.article_outlined,
+              color: kPrimary,
+              size: hero ? 23 : 20,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(14),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.sourceName,
-                  style: const TextStyle(
-                    color: kGold,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.sourceName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: kGold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.arrow_outward_rounded,
+                      color: kMuted,
+                      size: 15,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 6),
                 Text(
                   item.title,
-                  maxLines: hero ? 3 : 2,
+                  maxLines: hero ? 4 : 3,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: hero ? 16 : 14,
                     fontWeight: FontWeight.w900,
                     height: 1.5,
                   ),
                 ),
                 if (item.publishedText != null) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 7),
                   Text(
                     item.publishedText!,
                     style: const TextStyle(color: Colors.white54, fontSize: 11),
