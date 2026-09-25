@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
-import 'core/app_font.dart';
 import 'core/theme.dart';
 import 'screens/app_shell.dart';
 import 'services/firebase_service.dart';
@@ -30,7 +29,6 @@ Future<void> main() async {
   Intl.defaultLocale = 'ar';
 
   await FirebaseService.initialize();
-  await AppFontController.instance.load();
   runApp(const MasrawyFanApp());
 }
 
@@ -38,19 +36,16 @@ class MasrawyFanApp extends StatelessWidget {
   const MasrawyFanApp({super.key});
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<AppFont>(
-    valueListenable: AppFontController.instance,
-    builder: (context, font, _) => MaterialApp(
-      title: 'Masrawy fan',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(font),
-      locale: const Locale('ar'),
-      builder: (context, child) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: child ?? const SizedBox.shrink(),
-      ),
-      home: const SplashGate(),
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Masrawy fan',
+    debugShowCheckedModeBanner: false,
+    theme: buildAppTheme(),
+    locale: const Locale('ar'),
+    builder: (context, child) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: child ?? const SizedBox.shrink(),
     ),
+    home: const SplashGate(),
   );
 }
 

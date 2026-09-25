@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../core/app_font.dart';
 import '../core/theme.dart';
 import '../models/football_models.dart';
 import '../models/history_content.dart';
@@ -22,6 +21,21 @@ const matchCardBackground = 'assets/images/match_card_background.png';
 const supportersBackground = 'assets/images/supporters_background.jpg';
 const teamSquadBackground = 'assets/images/team_squad_background.jpg';
 
+Match? _nextMatchForDisplay(List<Match> matches) {
+  final candidates = matches
+      .where((match) => match.isLive || match.status == 'upcoming')
+      .toList();
+  candidates.sort((a, b) {
+    if (a.isLive && !b.isLive) return -1;
+    if (!a.isLive && b.isLive) return 1;
+    final aDate = DateTime.tryParse(a.kickoff ?? '');
+    final bDate = DateTime.tryParse(b.kickoff ?? '');
+    if (aDate == null || bDate == null) return 0;
+    return aDate.compareTo(bDate);
+  });
+  return candidates.isEmpty ? null : candidates.first;
+}
+
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -32,14 +46,6 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int index = 0;
   final api = ApiClient();
-  static const pageTitles = [
-    'ناديك في كل لحظة',
-    'مركز المباريات',
-    'جدول المنافسة',
-    'الفريق الأول',
-    'نبض الأخبار',
-    'ذاكرة المصري',
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -58,27 +64,14 @@ class _AppShellState extends State<AppShell> {
           children: [
             const BrandMark(size: 28),
             const SizedBox(width: 9),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                   'Masrawy fan',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .6,
-                  ),
-                ),
-                Text(
-                  pageTitles[index],
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: kMuted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            const Text(
+              'Masrawy fan',
+              style: TextStyle(
+                fontFamily: 'Rakkas',
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .3,
+              ),
             ),
           ],
         ),
@@ -187,22 +180,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late Future<List<Match>> _matchesFuture;
   late Future<List<NewsItem>> _newsFuture;
-  Timer? _clock;
-  DateTime _now = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     _loadData();
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _now = DateTime.now());
-    });
-  }
-
-  @override
-  void dispose() {
-    _clock?.cancel();
-    super.dispose();
   }
 
   void _loadData() {
@@ -213,21 +195,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refresh() async {
     setState(_loadData);
     await Future.wait([_matchesFuture, _newsFuture]);
-  }
-
-  Match? _nextMatch(List<Match> matches) {
-    final candidates = matches
-        .where((match) => match.isLive || match.status == 'upcoming')
-        .toList();
-    candidates.sort((a, b) {
-      if (a.isLive && !b.isLive) return -1;
-      if (!a.isLive && b.isLive) return 1;
-      final aDate = DateTime.tryParse(a.kickoff ?? '');
-      final bDate = DateTime.tryParse(b.kickoff ?? '');
-      if (aDate == null || bDate == null) return 0;
-      return aDate.compareTo(bDate);
-    });
-    return candidates.isEmpty ? null : candidates.first;
   }
 
   @override
@@ -249,10 +216,10 @@ class _HomeScreenState extends State<HomeScreen> {
               if (snapshot.hasError) {
                 return const ErrorCard(message: 'تعذر تحميل المباراة القادمة');
               }
-              final next = _nextMatch(snapshot.data ?? const <Match>[]);
-              return next == null
-                  ? const _NoUpcomingMatch()
-                  : NextMatchShowcase(match: next, now: _now);
+              final next = _nextMatchForDisplay(
+                snapshot.data ?? const <Match>[],
+              );
+              return _UpcomingMatchCard(match: next);
             },
           ),
           const SizedBox(height: 12),
@@ -388,6 +355,7 @@ class _HomeHeader extends StatelessWidget {
                       Text(
                         'MASRAWY FAN',
                         style: TextStyle(
+                          fontFamily: 'Rakkas',
                           color: Colors.white.withOpacity(.78),
                           fontSize: 10,
                           letterSpacing: 2.1,
@@ -579,17 +547,50 @@ class _NoUpcomingMatch extends StatelessWidget {
   );
 }
 
-class NextMatchShowcase extends StatelessWidget {
-  const NextMatchShowcase({super.key, required this.match, required this.now});
+class _UpcomingMatchCard extends StatelessWidget {
+  const _UpcomingMatchCard({required this.match});
+
+  final Match? match;
+
+  @override
+  Widget build(BuildContext context) => match == null
+      ? const _NoUpcomingMatch()
+      : NextMatchShowcase(match: match!);
+}
+
+class NextMatchShowcase extends StatefulWidget {
+  const NextMatchShowcase({super.key, required this.match});
 
   final Match match;
-  final DateTime now;
 
-  DateTime? get kickoff => DateTime.tryParse(match.kickoff ?? '')?.toLocal();
+  @override
+  State<NextMatchShowcase> createState() => _NextMatchShowcaseState();
+}
+
+class _NextMatchShowcaseState extends State<NextMatchShowcase> {
+  Timer? _clock;
+
+  DateTime? get kickoff =>
+      DateTime.tryParse(widget.match.kickoff ?? '')?.toLocal();
+
+  @override
+  void initState() {
+    super.initState();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _clock?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final remaining = kickoff?.difference(now);
+    final match = widget.match;
+    final remaining = kickoff?.difference(DateTime.now());
     final isLive = match.isLive || (remaining != null && remaining.isNegative);
     final safeRemaining = remaining == null || remaining.isNegative
         ? Duration.zero
@@ -887,17 +888,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
         builder: (matches) {
           final upcoming = matches.where((m) => !m.isPlayed).toList();
           final played = matches.where((m) => m.isPlayed).toList();
-          final live = matches.where((m) => m.isLive).toList();
           final shown = switch (filter) {
             1 => played,
             2 => matches,
             _ => upcoming,
           };
-          final featured = live.isNotEmpty
-              ? live.first
-              : upcoming.isNotEmpty
-                  ? upcoming.first
-                  : null;
+          final featured = _nextMatchForDisplay(matches);
 
           return RefreshIndicator(
             color: kPrimary,
@@ -907,12 +903,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 30),
               children: [
-                _MatchesHero(
-                  match: featured,
-                  upcomingCount: upcoming.length,
-                  playedCount: played.length,
-                  liveCount: live.length,
-                ),
+                _UpcomingMatchCard(match: featured),
                 const SizedBox(height: 18),
                 Row(
                   children: [
@@ -987,271 +978,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
             ),
           );
         },
-      );
-}
-
-class _MatchesHero extends StatelessWidget {
-  const _MatchesHero({
-    required this.match,
-    required this.upcomingCount,
-    required this.playedCount,
-    required this.liveCount,
-  });
-
-  final Match? match;
-  final int upcomingCount;
-  final int playedCount;
-  final int liveCount;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: const LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [Color(0xff1a6245), Color(0xff0b2c20)],
-          ),
-          border: Border.all(color: kPrimary.withOpacity(.34)),
-          boxShadow: [
-            BoxShadow(
-              color: kPrimary.withOpacity(.12),
-              blurRadius: 26,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              left: -34,
-              bottom: -48,
-              child: Icon(
-                Icons.sports_soccer_rounded,
-                size: 190,
-                color: Colors.white.withOpacity(.035),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 19, 18, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.calendar_month_rounded,
-                              size: 14,
-                              color: kGold,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'مركز المباريات',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      if (liveCount > 0)
-                        _LiveDotLabel(count: liveCount),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    match == null
-                        ? 'تابع موسم المصري'
-                        : match!.isLive
-                            ? 'المصري يلعب الآن'
-                            : 'المواجهة القادمة',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 23,
-                      fontWeight: FontWeight.w900,
-                      height: 1.15,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    match == null
-                        ? 'كل المواعيد والنتائج في مكان واحد'
-                        : match!.competition,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(.66),
-                      fontSize: 12,
-                    ),
-                  ),
-                  if (match != null) ...[
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _HeroTeam(
-                            team: match!.homeTeam,
-                            alignment: CrossAxisAlignment.start,
-                          ),
-                        ),
-                        Column(
-                          children: [
-                            StatusBadge(match: match!),
-                            const SizedBox(height: 6),
-                            Text(
-                              match!.isPlayed
-                                  ? '${match!.homeScore} - ${match!.awayScore}'
-                                  : 'VS',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 23,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Expanded(
-                          child: _HeroTeam(
-                            team: match!.awayTeam,
-                            alignment: CrossAxisAlignment.end,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (match!.formattedKickoff != null) ...[
-                      const SizedBox(height: 15),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.schedule_rounded,
-                            size: 15,
-                            color: kGold,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            match!.formattedKickoff!,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                  const SizedBox(height: 15),
-                  Row(
-                    children: [
-                      _HeroMetric(label: 'قادمة', value: '$upcomingCount'),
-                      const SizedBox(width: 18),
-                      _HeroMetric(label: 'نتائج', value: '$playedCount'),
-                      const Spacer(),
-                      const Icon(
-                        Icons.swipe_left_rounded,
-                        size: 15,
-                        color: Colors.white38,
-                      ),
-                      const SizedBox(width: 5),
-                      const Text(
-                        'اضغط للتفاصيل',
-                        style: TextStyle(color: Colors.white54, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
-class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: kGold,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
-        ],
-      );
-}
-
-class _LiveDotLabel extends StatelessWidget {
-  const _LiveDotLabel({required this.count});
-  final int count;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(color: kLive, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            '$count مباشر',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      );
-}
-
-class _HeroTeam extends StatelessWidget {
-  const _HeroTeam({required this.team, required this.alignment});
-  final Team team;
-  final CrossAxisAlignment alignment;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: alignment,
-        children: [
-          TeamLogo(url: team.crestUrl, size: 46),
-          const SizedBox(height: 7),
-          Text(
-            team.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
       );
 }
 
@@ -3656,8 +3382,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     },
   );
   bool loading = true;
-  AppFont selectedFont = AppFontController.instance.value;
-
   @override
   void initState() {
     super.initState();
@@ -3723,47 +3447,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SectionTitle(
-                icon: Icons.text_fields_rounded,
-                title: 'شكل الخط',
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'اختر الخط المفضل لك، وسيتم تطبيقه على كل شاشات التطبيق.',
-                style: TextStyle(fontSize: 12, color: kMuted),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<AppFont>(
-                value: selectedFont,
-                decoration: const InputDecoration(
-                  labelText: 'الخط المستخدم',
-                  prefixIcon: Icon(Icons.font_download_outlined),
-                ),
-                items: AppFont.values
-                    .map(
-                      (font) => DropdownMenuItem(
-                        value: font,
-                        child: Text(
-                          font.label,
-                          style: TextStyle(fontFamily: font.family),
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (font) {
-                  if (font == null) return;
-                  setState(() => selectedFont = font);
-                  AppFontController.instance.setFont(font);
-                },
               ),
             ],
           ),
@@ -5757,7 +5440,6 @@ class MatchListTile extends StatelessWidget {
                           child: _MatchCardTeam(
                             team: match.homeTeam,
                             angle: -.065,
-                            alignment: CrossAxisAlignment.start,
                           ),
                         ),
                         SizedBox(
@@ -5768,7 +5450,6 @@ class MatchListTile extends StatelessWidget {
                           child: _MatchCardTeam(
                             team: match.awayTeam,
                             angle: .065,
-                            alignment: CrossAxisAlignment.end,
                           ),
                         ),
                       ],
@@ -5812,34 +5493,37 @@ class _MatchCardTeam extends StatelessWidget {
   const _MatchCardTeam({
     required this.team,
     required this.angle,
-    required this.alignment,
   });
 
   final Team team;
   final double angle;
-  final CrossAxisAlignment alignment;
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: alignment,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Transform.rotate(
             angle: angle,
             child: TeamLogo(url: team.crestUrl, size: 92, tinted: true),
           ),
           const SizedBox(height: 4),
-          Text(
-            team.name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: alignment == CrossAxisAlignment.end
-                ? TextAlign.right
-                : TextAlign.left,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+          Transform.rotate(
+            angle: angle,
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(
+                team.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  height: 1.1,
+                  fontWeight: FontWeight.w900,
+                  shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                ),
+              ),
             ),
           ),
         ],

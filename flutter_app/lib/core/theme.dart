@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
-import 'app_font.dart';
 
 const kBackground = Color(0xff071912);
 const kCard = Color(0xff0d271d);
@@ -13,10 +10,9 @@ const kInk = Color(0xffeaf4ee);
 const kMuted = Color(0xff91aa9c);
 const kLine = Color(0xff244738);
 
-ThemeData buildAppTheme([AppFont font = AppFont.tajawal]) {
-  final typography = font == AppFont.tajawal
-      ? GoogleFonts.tajawalTextTheme(ThemeData.dark().textTheme)
-      : ThemeData.dark().textTheme.apply(fontFamily: font.family);
+ThemeData buildAppTheme() {
+  const appFont = 'Amiri';
+  final typography = ThemeData.dark().textTheme.apply(fontFamily: appFont);
   final themedTypography = typography.apply(
     bodyColor: kInk,
     displayColor: kInk,
@@ -39,9 +35,7 @@ ThemeData buildAppTheme([AppFont font = AppFont.tajawal]) {
     useMaterial3: true,
     colorScheme: scheme,
     textTheme: themedTypography,
-    fontFamily: font == AppFont.tajawal
-        ? GoogleFonts.tajawal().fontFamily
-        : font.family,
+    fontFamily: appFont,
     scaffoldBackgroundColor: kBackground,
     visualDensity: VisualDensity.standard,
     pageTransitionsTheme: const PageTransitionsTheme(
@@ -95,7 +89,12 @@ ThemeData buildAppTheme([AppFont font = AppFont.tajawal]) {
       indicatorShape: StadiumBorder(),
       indicatorColor: kPrimary.withValues(alpha: .18),
       labelTextStyle: WidgetStateProperty.all(
-        const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: kInk),
+        const TextStyle(
+          fontFamily: 'Rakkas',
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: kInk,
+        ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
