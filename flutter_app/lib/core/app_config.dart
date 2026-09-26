@@ -4,7 +4,7 @@ class AppConfig {
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue:
-        'https://egyptian-football-icons-flutter-app--sixow73430.replit.app/api',
+        'https://quiet-night-d125.noor-app-50.workers.dev/api',
   );
 
   static const firebaseApiKey = String.fromEnvironment('FIREBASE_API_KEY');
