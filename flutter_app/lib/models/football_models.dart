@@ -8,9 +8,11 @@ class Team {
     final int? id;
 
     factory Team.fromJson(Map<String, dynamic> json) {
-      final teamName = json['name'] as String? ?? '—';
-      final crest = teamName.contains('المصري') ? 'asset://team_crest' : json['crestUrl'] as String?;
-      return Team(name: teamName, crestUrl: crest, id: (json['id'] as num?)?.toInt());
+      final teamName = json['name']?.toString() ?? '—';
+      final crest = teamName.contains('المصري')
+          ? 'asset://team_crest'
+          : json['crestUrl']?.toString();
+      return Team(name: teamName, crestUrl: crest, id: _firstInt(json, const ['id']));
     }
     }
 
@@ -74,22 +76,22 @@ class Team {
   }
 
   factory Match.fromJson(Map<String, dynamic> json) => Match(
-    id: json['id'] as String? ?? '${json['matchId']}',
-    matchId: (json['matchId'] as num?)?.toInt() ?? 0,
-    competition: json['competition'] as String? ?? 'مباراة',
-    status: json['status'] as String? ?? 'upcoming',
-    statusText: json['statusText'] as String? ?? 'لم تبدأ',
+    id: json['id']?.toString() ?? '${json['matchId']}',
+    matchId: _firstInt(json, const ['matchId', 'id']) ?? 0,
+    competition: json['competition']?.toString() ?? 'مباراة',
+    status: json['status']?.toString() ?? 'upcoming',
+    statusText: json['statusText']?.toString() ?? 'لم تبدأ',
     homeTeam: Team.fromJson(
       (json['homeTeam'] as Map?)?.cast<String, dynamic>() ?? const {},
     ),
     awayTeam: Team.fromJson(
       (json['awayTeam'] as Map?)?.cast<String, dynamic>() ?? const {},
     ),
-    kickoffText: json['kickoffText'] as String?,
-    kickoff: json['kickoff'] as String?,
-    homeScore: (json['homeScore'] as num?)?.toInt(),
-    awayScore: (json['awayScore'] as num?)?.toInt(),
-    venue: json['venue'] as String?,
+    kickoffText: json['kickoffText']?.toString(),
+    kickoff: json['kickoff']?.toString(),
+    homeScore: _firstInt(json, const ['homeScore']),
+    awayScore: _firstInt(json, const ['awayScore']),
+    venue: json['venue']?.toString(),
   );
 }
 
@@ -182,10 +184,10 @@ class LineupPlayer {
   final bool isSpare;
 
   factory LineupPlayer.fromJson(Map<String, dynamic> json) => LineupPlayer(
-    id: (json['id'] as num?)?.toInt() ?? 0,
+    id: _firstInt(json, const ['id', 'playerId']) ?? 0,
     name: json['name']?.toString() ?? '—',
     position: json['position']?.toString() ?? '—',
-    number: (json['number'] as num?)?.toInt(),
+    number: _firstInt(json, const ['number', 'shirtNumber']),
     photoUrl: json['photoUrl']?.toString(),
     isCaptain: json['isCaptain'] == true,
     isSpare: json['isSpare'] == true,
@@ -256,15 +258,30 @@ class MatchDetailData {
         .toList() ?? const [];
     final lineups = (raw['lineups'] as Map?)?.cast<String, dynamic>() ?? const {};
     final stats = (raw['stats'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final commentary = list('commentary').isNotEmpty
+        ? list('commentary')
+        : list('comments');
+    final homeLineup = _lineup(
+      lineups['home'] ?? raw['homeLineup'] ?? raw['homeSquad'],
+    );
+    final awayLineup = _lineup(
+      lineups['away'] ?? raw['awayLineup'] ?? raw['awaySquad'],
+    );
+    final homeBench = _lineup(
+      lineups['homeBench'] ?? raw['homeBench'] ?? raw['homeSpareSquad'],
+    );
+    final awayBench = _lineup(
+      lineups['awayBench'] ?? raw['awayBench'] ?? raw['awaySpareSquad'],
+    );
     return MatchDetailData(
       match: Match.fromJson(raw),
       events: list('events').map(MatchEventModel.fromJson).toList(),
       timeline: list('timeline').map(MatchEventModel.fromJson).toList(),
-      commentary: list('commentary'),
-      homeLineup: _lineup(lineups['home']),
-      awayLineup: _lineup(lineups['away']),
-      homeBench: _lineup(lineups['homeBench']),
-      awayBench: _lineup(lineups['awayBench']),
+      commentary: commentary,
+      homeLineup: homeLineup,
+      awayLineup: awayLineup,
+      homeBench: homeBench,
+      awayBench: awayBench,
       stats: [
         if (stats['possession'] is Map)
           MatchStatRow(
@@ -387,14 +404,14 @@ class Player {
   final int? appearances;
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    name: json['name'] as String? ?? '—',
-    position: json['position'] as String? ?? '—',
-    number: (json['number'] as num?)?.toInt(),
-    photoUrl: json['photoUrl'] as String?,
-    nationality: json['nationality'] as String?,
-    goals: (json['goals'] as num?)?.toInt(),
-    appearances: (json['appearances'] as num?)?.toInt(),
+    id: _firstInt(json, const ['id', 'playerId']) ?? 0,
+    name: json['name']?.toString() ?? '—',
+    position: json['position']?.toString() ?? '—',
+    number: _firstInt(json, const ['number', 'shirtNumber']),
+    photoUrl: json['photoUrl']?.toString(),
+    nationality: json['nationality']?.toString(),
+    goals: _firstInt(json, const ['goals']),
+    appearances: _firstInt(json, const ['appearances']),
   );
 }
 
@@ -418,13 +435,13 @@ class NewsItem {
   final String? publishedAt;
 
   factory NewsItem.fromJson(Map<String, dynamic> json) => NewsItem(
-    id: json['id'] as String? ?? json['url'] as String? ?? '',
-    title: json['title'] as String? ?? '—',
-    url: json['url'] as String? ?? '',
-    sourceName: json['sourceName'] as String? ?? 'المصدر',
-    imageUrl: json['imageUrl'] as String?,
-    publishedText: json['publishedText'] as String?,
-    publishedAt: json['publishedAt'] as String?,
+    id: json['id']?.toString() ?? json['url']?.toString() ?? '',
+    title: json['title']?.toString() ?? '—',
+    url: json['url']?.toString() ?? '',
+    sourceName: json['sourceName']?.toString() ?? 'المصدر',
+    imageUrl: json['imageUrl']?.toString(),
+    publishedText: json['publishedText']?.toString(),
+    publishedAt: json['publishedAt']?.toString(),
   );
 }
 

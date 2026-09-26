@@ -523,6 +523,21 @@ const mapSquad = (list: unknown[]): LineupPlayer[] =>
     isSpare: Boolean(p["IsSpare"]),
   }));
 
+const matchSquad = (
+  list: unknown[],
+  teamId: number,
+  isSpare: boolean,
+): LineupPlayer[] =>
+  mapSquad(
+    list.filter((raw) => {
+      const player = raw as Record<string, unknown>;
+      return (
+        Number(player["TeamId"]) === teamId &&
+        Boolean(player["IsSpare"]) === isSpare
+      );
+    }),
+  );
+
 export function parseMatchDetail(html: string): MatchDetail | null {
   const start = html.indexOf("viewModelData");
   if (start === -1) return null;
@@ -541,6 +556,21 @@ export function parseMatchDetail(html: string): MatchDetail | null {
   );
   const matchId = Number(get<number>("Id"));
   const slug = String(get<string>("Slug") ?? "");
+  const homeTeamId = Number(get<number>("HomeTeamId"));
+  const awayTeamId = Number(get<number>("AwayTeamId"));
+  const squads = get<unknown[]>("MatchTeamsSquads") ?? [];
+  const homeSquad = squads.length
+    ? matchSquad(squads, homeTeamId, false)
+    : mapSquad(get<unknown[]>("HomeTeamSquad") ?? []);
+  const awaySquad = squads.length
+    ? matchSquad(squads, awayTeamId, false)
+    : mapSquad(get<unknown[]>("AwayTeamSquad") ?? []);
+  const homeBench = squads.length
+    ? matchSquad(squads, homeTeamId, true)
+    : mapSquad(get<unknown[]>("HomeTeamSpareSquad") ?? []);
+  const awayBench = squads.length
+    ? matchSquad(squads, awayTeamId, true)
+    : mapSquad(get<unknown[]>("AwayTeamSpareSquad") ?? []);
 
   const events: MatchEvent[] = (get<unknown[]>("Events") ?? []).map((raw) => {
     const e = raw as Record<string, never>;
@@ -559,7 +589,12 @@ export function parseMatchDetail(html: string): MatchDetail | null {
   });
   const orderedEvents = sortMatchEvents(events);
 
-  const commentary = (get<unknown[]>("Comments") ?? [])
+  const commentary = (
+    get<unknown[]>("Comments") ??
+    get<unknown[]>("Commentary") ??
+    get<unknown[]>("MatchComments") ??
+    []
+  )
     .map((raw) => {
       const c = raw as Record<string, never>;
       return {
@@ -593,12 +628,12 @@ export function parseMatchDetail(html: string): MatchDetail | null {
     statusText: statusText || "لم تبدأ",
     status: statusFromText(statusText),
     homeTeam: {
-      id: Number(get<number>("HomeTeamId")),
+      id: homeTeamId,
       name: String(get<string>("HomeTeamName") ?? ""),
       crestUrl: absolute(get<string>("HomeTeamLogoUrl")),
     },
     awayTeam: {
-      id: Number(get<number>("AwayTeamId")),
+      id: awayTeamId,
       name: String(get<string>("AwayTeamName") ?? ""),
       crestUrl: absolute(get<string>("AwayTeamLogoUrl")),
     },
@@ -620,8 +655,8 @@ export function parseMatchDetail(html: string): MatchDetail | null {
       commentary,
       String(get<string>("HomeTeamName") ?? ""),
       String(get<string>("AwayTeamName") ?? ""),
-      Number(get<number>("HomeTeamId")),
-      Number(get<number>("AwayTeamId")),
+      homeTeamId,
+      awayTeamId,
     ),
     stats: deriveStats(
       commentary,
@@ -631,10 +666,10 @@ export function parseMatchDetail(html: string): MatchDetail | null {
     ),
 
     lineups: {
-      home: mapSquad(get<unknown[]>("HomeTeamSquad") ?? []),
-      away: mapSquad(get<unknown[]>("AwayTeamSquad") ?? []),
-      homeBench: mapSquad(get<unknown[]>("HomeTeamSpareSquad") ?? []),
-      awayBench: mapSquad(get<unknown[]>("AwayTeamSpareSquad") ?? []),
+      home: homeSquad,
+      away: awaySquad,
+      homeBench,
+      awayBench,
     },
     commentary,
   };

@@ -29,11 +29,23 @@ class ApiClient {
         const Duration(seconds: 12),
       );
       final decoded = _decode(response);
-      await OfflineCache.instance.write(cacheKey, decoded);
+      // A cache write must never turn a successful network response into an
+      // error. This is especially important on first launch, before storage
+      // is ready or when the platform rejects a large cached payload.
+      try {
+        await OfflineCache.instance.write(cacheKey, decoded);
+      } catch (_) {
+        // The fresh response is still valid; just continue without caching.
+      }
       markOnline();
       return decoded;
     } catch (error) {
-      final cached = await OfflineCache.instance.read(cacheKey);
+      Map<String, dynamic>? cached;
+      try {
+        cached = await OfflineCache.instance.read(cacheKey);
+      } catch (_) {
+        // Storage failures should not hide the original network/API error.
+      }
       markOffline();
       if (cached != null) return cached;
       if (error is ApiException) rethrow;
@@ -69,32 +81,48 @@ class ApiClient {
   }
 
   Map<String, dynamic> _decode(http.Response response) {
-    final decoded = jsonDecode(response.body);
+    final body = response.body.trim();
+    if (body.isEmpty) {
+      throw const ApiException('السيرفر أعاد استجابة فارغة');
+    }
+
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(body);
+    } catch (_) {
+      throw const ApiException('استجابة السيرفر غير صالحة');
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final message = decoded is Map ? decoded['error'] : null;
       throw ApiException(message?.toString() ?? 'تعذر الاتصال بالسيرفر');
     }
-    return (decoded as Map).cast<String, dynamic>();
+    if (decoded is! Map) {
+      throw const ApiException('تنسيق استجابة السيرفر غير متوقع');
+    }
+    return decoded.cast<String, dynamic>();
   }
 
   Future<List<Match>> getMatches() async {
     final data = await _get('/football/matches');
-    return _list(data['matches']).map(Match.fromJson).toList();
+    return _mapList(data['matches'] ?? data['items'], Match.fromJson);
   }
 
   Future<List<Standing>> getStandings() async {
     final data = await _get('/football/standings');
-    return _list(data['standings']).map(Standing.fromJson).toList();
+    return _mapList(data['standings'] ?? data['table'] ?? data['rows'], Standing.fromJson);
   }
 
   Future<List<Player>> getSquad() async {
     final data = await _get('/football/squad');
-    return _list(data['players']).map(Player.fromJson).toList();
+    return _mapList(data['players'] ?? data['squad'], Player.fromJson);
   }
 
   Future<List<NewsItem>> getNews() async {
     final data = await _get('/football/news');
-    final news = _list(data['news']).map(NewsItem.fromJson).toList();
+    final news = _mapList(
+      data['news'] ?? data['items'] ?? data['articles'],
+      NewsItem.fromJson,
+    );
     news.sort((a, b) {
       final aDate = DateTime.tryParse(a.publishedAt ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
@@ -139,10 +167,20 @@ class ApiClient {
     await _authed('/me/devices', method: 'POST', body: {'token': token});
   }
 
-  List<Map<String, dynamic>> _list(dynamic value) => value is List
-      ? value
-            .whereType<Map>()
-            .map((item) => item.cast<String, dynamic>())
-            .toList()
-      : const [];
+  List<T> _mapList<T>(
+    dynamic value,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    if (value is! List) return const [];
+    final result = <T>[];
+    for (final item in value) {
+      if (item is! Map) continue;
+      try {
+        result.add(fromJson(item.cast<String, dynamic>()));
+      } catch (_) {
+        // Ignore one malformed upstream item instead of breaking the page.
+      }
+    }
+    return result;
+  }
 }
