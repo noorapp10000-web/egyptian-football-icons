@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../core/app_config.dart';
 import '../core/theme.dart';
 
 String _imageSource(String? value) {
@@ -55,11 +54,9 @@ String _imageSource(String? value) {
     return source;
   }
 
-  final proxyBase =
-      '${AppConfig.apiBaseUrl.replaceFirst(RegExp(r'/$'), '')}/football/image';
-  return Uri.parse(proxyBase)
-      .replace(queryParameters: {'url': source})
-      .toString();
+  // Fetch image bytes directly from the public origin. The API keeps the
+  // /football/image redirect only for older clients; bytes never cross Replit.
+  return source;
 }
 
 class CachedRemoteImage extends StatelessWidget {

@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "serve": "node ../../scripts/serve-egyptian-football-hub.mjs",
+    "test:cache": "node --experimental-strip-types --test src/lib/single-flight-cache.test.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

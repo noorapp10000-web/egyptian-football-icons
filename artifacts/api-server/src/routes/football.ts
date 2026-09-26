@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 
 import {
   loadMatchDetail,
@@ -72,37 +72,42 @@ router.get("/football/image", async (req, res) => {
     return;
   }
 
-  try {
-    const response = await fetch(target, {
-      headers: {
-        Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-        Referer: "https://www.filgoal.com/",
-        "User-Agent":
-          "Mozilla/5.0 (Android 13; Mobile) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36",
-      },
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!response.ok) {
-      res.status(response.status).end();
-      return;
-    }
-    const contentType = response.headers.get("content-type") ?? "image/jpeg";
-    if (!contentType.startsWith("image/")) {
-      res.status(415).end();
-      return;
-    }
-    const body = Buffer.from(await response.arrayBuffer());
-    res
-      .setHeader("Content-Type", contentType)
-      .setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800")
-      .send(body);
-  } catch {
-    res.status(502).json({ error: "image_fetch_failed" });
-  }
+  // Backwards-compatible endpoint: redirect the client to the source. Replit
+  // never downloads, stores, or streams the image bytes.
+  res
+    .setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400")
+    .redirect(302, target.toString());
 });
 
+function setPublicCache(
+  res: Response,
+  maxAgeSeconds: number,
+  staleWhileRevalidateSeconds: number,
+) {
+  res.setHeader(
+    "Cache-Control",
+    `public, max-age=${maxAgeSeconds}, s-maxage=${maxAgeSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`,
+  );
+}
+
+function matchesHttpTtl(matches: Awaited<ReturnType<typeof loadMatches>>["matches"]) {
+  if (matches.some((match) => match.status === "live")) {
+    return { maxAge: 20, swr: 5 };
+  }
+  const now = Date.now();
+  const soon = matches.some((match) => {
+    if (match.status !== "upcoming" || !match.kickoff) return false;
+    const kickoff = Date.parse(match.kickoff);
+    return Number.isFinite(kickoff) && kickoff - now <= 90 * 60_000 && kickoff - now > -3 * 60 * 60_000;
+  });
+  return soon ? { maxAge: 60, swr: 15 } : { maxAge: 3600, swr: 300 };
+}
+
 router.get("/football/matches", async (_req, res) => {
-  res.json(await loadMatches());
+  const data = await loadMatches();
+  const ttl = matchesHttpTtl(data.matches);
+  setPublicCache(res, ttl.maxAge, ttl.swr);
+  res.json(data);
 });
 
 router.get("/football/matches/:matchId", async (req, res) => {
@@ -111,7 +116,10 @@ router.get("/football/matches/:matchId", async (req, res) => {
     res.status(400).json({ error: "invalid_match_id" });
     return;
   }
-  res.json(await loadMatchDetail(matchId));
+  const data = await loadMatchDetail(matchId);
+  const ttl = data.match.status === "live" ? { maxAge: 20, swr: 5 } : { maxAge: 3600, swr: 300 };
+  setPublicCache(res, ttl.maxAge, ttl.swr);
+  res.json(data);
 });
 
 router.get("/football/players/:playerId", async (req, res) => {
@@ -120,19 +128,27 @@ router.get("/football/players/:playerId", async (req, res) => {
     res.status(400).json({ error: "invalid_player_id" });
     return;
   }
-  res.json(await loadPlayerDetail(playerId));
+  const data = await loadPlayerDetail(playerId);
+  setPublicCache(res, 7200, 900);
+  res.json(data);
 });
 
 router.get("/football/squad", async (_req, res) => {
-  res.json(await loadSquad());
+  const data = await loadSquad();
+  setPublicCache(res, 86400, 3600);
+  res.json(data);
 });
 
 router.get("/football/standings", async (_req, res) => {
-  res.json(await loadStandings());
+  const data = await loadStandings();
+  setPublicCache(res, 7200, 900);
+  res.json(data);
 });
 
 router.get("/football/news", async (_req, res) => {
-  res.json(await loadNews());
+  const data = await loadNews();
+  setPublicCache(res, 3600, 300);
+  res.json(data);
 });
 
 export default router;

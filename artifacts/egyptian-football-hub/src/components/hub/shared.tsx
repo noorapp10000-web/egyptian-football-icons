@@ -7,40 +7,8 @@ import type { Match, Source } from "@/lib/hub-types";
 import { MASRY_ID } from "@/lib/hub-types";
 import { formatKickoff, formatTime12 } from "@/lib/time";
 
-const imageProxyHosts = [
-  "filgoal.com",
-  "yallakora.com",
-  "elwatannews.com",
-  "youm7.com",
-  "masrawy.com",
-  "kooora.com",
-  "kingfut.com",
-  "cairo24.com",
-  "btolat.com",
-  "almasryalyoum.com",
-  "wataninet.com",
-  "akhbarelyom.com",
-  "elbalad.news",
-  "sadaelbalad.com",
-  "shbabbek.com",
-  "newturkpost.com",
-  "elghad.news",
-];
-
 export function proxiedImageUrl(url: string | null | undefined) {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    const allowed = imageProxyHosts.some(
-      (item) => host === item || host.endsWith(`.${item}`),
-    );
-    return parsed.protocol === "https:" && allowed
-      ? `/api/football/image?url=${encodeURIComponent(url)}`
-      : url;
-  } catch {
-    return url;
-  }
+  return url || null;
 }
 
 export function SourceNote({ source }: { source?: Source | undefined }) {

@@ -8,6 +8,7 @@ import {
   normalizeMatchMinute,
   sortMatchEvents,
 } from "./match-events";
+import { SingleFlightCache } from "./single-flight-cache";
 
 export const TEAM_ID = 8;
 export const LEAGUE_ID = 1667;
@@ -236,57 +237,6 @@ const absolute = (url: string | null | undefined) => {
   return url;
 };
 
-const absoluteFrom = (url: string | null | undefined, base: string) => {
-  if (!url) return null;
-  const value = absolute(url);
-  if (!value) return null;
-  try {
-    return new URL(value, base).toString();
-  } catch {
-    return null;
-  }
-};
-
-async function imageFromArticle(url: string) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6_000);
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": UA,
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "ar,en;q=0.8",
-      },
-      signal: controller.signal,
-      redirect: "follow",
-    });
-    if (!response.ok) return null;
-    const html = await response.text();
-    const image =
-      html.match(
-        /<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/i,
-      )?.[1] ??
-      html.match(
-        /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/i,
-      )?.[1] ??
-      null;
-    return absoluteFrom(image ? decode(image) : null, response.url);
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-const isGoogleNewsUrl = (url: string) => {
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-    return hostname === "news.google.com" || hostname.endsWith(".news.google.com");
-  } catch {
-    return false;
-  }
-};
-
 const num = (value: string | null | undefined) => {
   if (value == null) return null;
   const cleaned = value.replace(/[^\d.-]/g, "");
@@ -314,9 +264,11 @@ async function fetchHtml(url: string) {
   }
 }
 
-/** كاش بسيط داخل الذاكرة لكل قيمة، مع الاحتفاظ بآخر بيانات ناجحة عند فشل المصدر. */
-type CacheEntry<T> = { value: T; at: number; live: boolean };
-const cache = new Map<string, CacheEntry<unknown>>();
+/** كاش RAM خلف Cloudflare، مع single-flight واحتفاظ محدود بآخر قيمة صحيحة. */
+const cache = new SingleFlightCache();
+const logCacheError = (key: string, error: unknown) => {
+  console.error(`فشل تحديث ${key}:`, error);
+};
 
 function matchesCacheTtl(matches: Match[] | undefined) {
   if (!matches || matches.length === 0) return 60 * 60_000;
@@ -333,19 +285,30 @@ function matchesCacheTtl(matches: Match[] | undefined) {
   return soon ? 60_000 : 60 * 60_000;
 }
 
-async function cached<T>(key: string, ttlMs: number, loader: () => Promise<T>) {
-  const hit = cache.get(key) as CacheEntry<T> | undefined;
-  if (hit && Date.now() - hit.at < ttlMs) return hit;
-  try {
-    const value = await loader();
-    const entry: CacheEntry<T> = { value, at: Date.now(), live: true };
-    cache.set(key, entry);
-    return entry;
-  } catch (error) {
-    console.error(`فشل تحديث ${key}:`, error);
-    if (hit) return { ...hit, live: false };
-    throw error;
-  }
+function matchesStaleMaxMs(matches: Match[] | undefined) {
+  return matches?.some((match) => match.status === "live")
+    ? 60_000
+    : 24 * 60 * 60_000;
+}
+
+function detailTtl(detail: MatchDetail | undefined) {
+  return detail?.status === "live" ? 20_000 : 60 * 60_000;
+}
+
+function detailStaleMaxMs(detail: MatchDetail | undefined) {
+  return detail?.status === "live" ? 60_000 : 7 * 24 * 60 * 60_000;
+}
+
+async function cached<T>(
+  key: string,
+  ttlMs: number,
+  loader: () => Promise<T>,
+  staleMaxMs: number,
+) {
+  return cache.get(key, ttlMs, loader, {
+    staleMaxMs,
+    onError: (error) => logCacheError(key, error),
+  });
 }
 
 const sourceOf = (name: string, url: string, live: boolean, at: number): Source => ({
@@ -432,7 +395,9 @@ export function parseSquad(html: string): SquadPlayer[] {
     .map((row): SquadPlayer | null => {
       const cells = [...row.matchAll(/<td>([\s\S]*?)<\/td>/gi)].map((m) => m[1]!);
       if (cells.length < 4) return null;
-      const link = cells[1]!.match(/href="(\/players\/(\d+)\/[^"]*)"/i);
+      const link = cells[1]!.match(
+        /href="(\/(?:players|persons)\/(\d+)\/[^"]*)"/i,
+      );
       if (!link) return null;
       const photo = cells[1]!.match(/data-src="([^"]+)"/i)?.[1];
       return {
@@ -1050,7 +1015,7 @@ export function parseAggregatorNews(xml: string): NewsItem[] {
 
 const MATCHES_URL = `${FG}/teams/${TEAM_ID}/matches-results/x`;
 const FIXTURES_URL = `${FG}/teams/${TEAM_ID}/matches-fixtures`;
-const PLAYERS_URL = `${FG}/teams/${TEAM_ID}/players/x`;
+const PLAYERS_URL = `${FG}/teams/${TEAM_ID}/players/${encodeURIComponent("المصري")}`;
 const SCORERS_URL = `${FG}/teams/${TEAM_ID}/scorers/x`;
 const STANDINGS_URL = `${FG}/championships/${LEAGUE_ID}/standings/x`;
 // صفحة أخبار نادي المصري نفسها على "في الجول" + صفحة النادي كمصدر إضافي
@@ -1062,8 +1027,11 @@ const AGG_NEWS_URL = `https://news.google.com/rss/search?q=${encodeURIComponent(
 )}&hl=ar&gl=EG&ceid=EG:ar`;
 
 export async function loadMatches() {
-  const existing = cache.get("matches") as CacheEntry<Match[]> | undefined;
-  const entry = await cached("matches", matchesCacheTtl(existing?.value), async () => {
+  const existing = cache.peek<Match[]>("matches");
+  const entry = await cached(
+    "matches",
+    matchesCacheTtl(existing?.value),
+    async () => {
     const [results, fixtures] = await Promise.all([
       fetchHtml(MATCHES_URL).then(parseTeamMatches).catch(() => [] as Match[]),
       fetchHtml(FIXTURES_URL).then(parseTeamMatches).catch(() => [] as Match[]),
@@ -1081,7 +1049,9 @@ export async function loadMatches() {
         ? (a.kickoff ?? "9999").localeCompare(b.kickoff ?? "9999")
         : (b.kickoff ?? "").localeCompare(a.kickoff ?? "");
     });
-  });
+    },
+    matchesStaleMaxMs(existing?.value),
+  );
   return {
     matches: entry.value,
     source: sourceOf("FilGoal", MATCHES_URL, entry.live, entry.at),
@@ -1097,26 +1067,41 @@ export function startHubScheduler() {
   if (schedulerStarted || typeof window !== "undefined") return;
   schedulerStarted = true;
 
-  const refreshMatches = () => {
-    void loadMatches().catch((error) => console.error("جدولة المباريات فشلت:", error));
+  const scheduleMatches = async (): Promise<void> => {
+    try {
+      const data = await loadMatches();
+      setTimeout(scheduleMatches, matchesCacheTtl(data.matches));
+    } catch (error) {
+      console.error("جدولة المباريات فشلت:", error);
+      setTimeout(scheduleMatches, 60_000);
+    }
   };
-  const refreshNews = () => {
-    void loadNews().catch((error) => console.error("جدولة الأخبار فشلت:", error));
-  };
-  const refreshStandings = () => {
-    void loadStandings().catch((error) => console.error("جدولة الترتيب فشلت:", error));
+  const scheduleFixed = (
+    label: string,
+    loader: () => Promise<unknown>,
+    intervalMs: number,
+  ) => {
+    const tick = async (): Promise<void> => {
+      try {
+        await loader();
+      } catch (error) {
+        console.error(`جدولة ${label} فشلت:`, error);
+      } finally {
+        setTimeout(tick, intervalMs);
+      }
+    };
+    void tick();
   };
 
-  refreshMatches();
-  refreshNews();
-  refreshStandings();
-  setInterval(refreshMatches, 20_000);
-  setInterval(refreshNews, 30 * 60_000);
-  setInterval(refreshStandings, 60 * 60_000);
+  // The first run warms the RAM cache once. Subsequent runs follow the
+  // endpoint TTL, so a non-live match list is not scraped every 20 seconds.
+  void scheduleMatches();
+  scheduleFixed("الأخبار", loadNews, 60 * 60_000);
+  scheduleFixed("الترتيب", loadStandings, 2 * 60 * 60_000);
 }
 
 export async function loadSquad() {
-  const entry = await cached("squad", 10 * 60_000, async () => {
+  const entry = await cached("squad", 24 * 60 * 60_000, async () => {
     const [playersHtml, scorersHtml] = await Promise.all([
       fetchHtml(PLAYERS_URL),
       fetchHtml(SCORERS_URL).catch(() => ""),
@@ -1137,7 +1122,7 @@ export async function loadSquad() {
         : p;
     });
     return { players: enriched, coach: parseCoach(playersHtml), scorers };
-  });
+  }, 7 * 24 * 60 * 60_000);
   return {
     ...entry.value,
     source: sourceOf("FilGoal", PLAYERS_URL, entry.live, entry.at),
@@ -1145,11 +1130,11 @@ export async function loadSquad() {
 }
 
 export async function loadStandings() {
-  const entry = await cached("standings", 60 * 60_000, async () => {
+  const entry = await cached("standings", 2 * 60 * 60_000, async () => {
     const rows = parseStandings(await fetchHtml(STANDINGS_URL));
     if (rows.length === 0) throw new Error("جدول الترتيب فارغ");
     return rows;
-  });
+  }, 24 * 60 * 60_000);
   return {
     standings: entry.value,
     source: sourceOf("FilGoal", STANDINGS_URL, entry.live, entry.at),
@@ -1157,12 +1142,18 @@ export async function loadStandings() {
 }
 
 export async function loadNews() {
-  const entry = await cached("news", 30 * 60_000, async () => {
-    const [fgHtml, teamHtml, aggXml] = await Promise.all([
-      fetchHtml(FG_NEWS_URL).catch(() => ""),
-      fetchHtml(FG_TEAM_URL).catch(() => ""),
-      fetchHtml(AGG_NEWS_URL).catch(() => ""),
+  const entry = await cached("news", 60 * 60_000, async () => {
+    const results = await Promise.allSettled([
+      fetchHtml(FG_NEWS_URL),
+      fetchHtml(FG_TEAM_URL),
+      fetchHtml(AGG_NEWS_URL),
     ]);
+    const [fgHtml, teamHtml, aggXml] = results.map((result) =>
+      result.status === "fulfilled" ? result.value : "",
+    );
+    if (results.every((result) => result.status === "rejected")) {
+      throw new Error("مصادر الأخبار غير متاحة");
+    }
     const fgItems = [
       ...(fgHtml ? parseFilGoalNews(fgHtml) : []),
       ...(teamHtml ? parseFilGoalNews(teamHtml) : []),
@@ -1182,24 +1173,17 @@ export async function loadNews() {
     });
     const merged = [...fgItems, ...aggItems];
     const unique = [...new Map(merged.map((n) => [n.url, n])).values()];
-    const withImages = await Promise.all(
-      unique.map(async (item) => {
-        if (isGoogleNewsUrl(item.url)) return { ...item, imageUrl: null };
-        if (item.imageUrl) return item;
-        const imageUrl = await imageFromArticle(item.url);
-        return imageUrl ? { ...item, imageUrl } : item;
-      }),
-    );
+    if (unique.length === 0) throw new Error("الأخبار غير متاحة");
     const timestamp = (item: NewsItem) => {
       const value = item.publishedAt ? Date.parse(item.publishedAt) : Number.NaN;
       if (Number.isFinite(value)) return value;
       const id = item.id.match(/(\d+)$/)?.[1];
       return id ? Number(id) : 0;
     };
-    return withImages
+    return unique
       .sort((a, b) => timestamp(b) - timestamp(a))
       .slice(0, 40);
-  });
+  }, 6 * 60 * 60_000);
   return {
     news: entry.value,
     source: sourceOf("FilGoal + مصادر أخبار", FG_NEWS_URL, entry.live, entry.at),
@@ -1207,7 +1191,11 @@ export async function loadNews() {
 }
 
 export async function loadMatchDetail(matchId: number) {
-  const entry = await cached(`match-${matchId}`, 20_000, async () => {
+  const existing = cache.peek<MatchDetail>(`match-${matchId}`);
+  const entry = await cached(
+    `match-${matchId}`,
+    detailTtl(existing?.value),
+    async () => {
     const { matches } = await loadMatches();
     const known = matches.find((m) => m.matchId === matchId);
     const slug = known?.slug || "x";
@@ -1226,7 +1214,9 @@ export async function loadMatchDetail(matchId: number) {
       if (scraped.length > 0) detail.events = scraped;
     }
     return detail;
-  });
+    },
+    detailStaleMaxMs(existing?.value),
+  );
   return {
     match: entry.value,
     source: sourceOf("FilGoal", entry.value.url, entry.live, entry.at),
@@ -1367,11 +1357,11 @@ export function parsePlayerDetail(html: string, playerId: number): PlayerDetail 
 }
 
 export async function loadPlayerDetail(playerId: number) {
-  const entry = await cached(`player-${playerId}`, 10 * 60_000, async () => {
+  const entry = await cached(`player-${playerId}`, 2 * 60 * 60_000, async () => {
     const detail = parsePlayerDetail(await fetchHtml(`${FG}/players/${playerId}/x`), playerId);
     if (!detail) throw new Error("بيانات اللاعب غير متاحة");
     return detail;
-  });
+  }, 24 * 60 * 60_000);
   return {
     player: entry.value,
     source: sourceOf("FilGoal", entry.value.url, entry.live, entry.at),

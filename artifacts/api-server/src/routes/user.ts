@@ -6,6 +6,12 @@ type FirebaseUser = { uid: string; email?: string };
 
 const router = Router();
 
+router.use("/me", (_req, res, next) => {
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  res.setHeader("CDN-Cache-Control", "private, no-store");
+  next();
+});
+
 const requireFirebaseUser: RequestHandler = async (req, res, next) => {
   const authorization = req.header("authorization");
   const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
