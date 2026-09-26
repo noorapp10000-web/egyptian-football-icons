@@ -106,10 +106,6 @@ export type MatchEvent = {
   player: string | null;
   playerPhotoUrl: string | null;
   relatedPlayer: string | null;
-  /** حدث مستنتج من التعليق الحي (ركنية، تسلل، إصابة...) وليس من قائمة الأحداث الرسمية. */
-  derived?: boolean;
-  /** نص التعليق المرتبط بالحدث المستنتج. */
-  text?: string | null;
 };
 
 export type StatRow = {
@@ -134,7 +130,7 @@ export type MatchDetail = Match & {
   awayFormation: string | null;
   tvChannels: string[];
   events: MatchEvent[];
-  /** كل أحداث المباراة: الرسمية + المستنتجة من التعليق، مرتبة بالدقيقة. */
+  /** كل أحداث المباراة الرسمية مرتبة بالدقيقة. */
   timeline: MatchEvent[];
   stats: MatchStats;
   lineups: {
@@ -143,7 +139,6 @@ export type MatchDetail = Match & {
     homeBench: LineupPlayer[];
     awayBench: LineupPlayer[];
   };
-  commentary: { id: number; minute: number | null; text: string; half: string | null }[];
 };
 
 
@@ -154,17 +149,6 @@ const nowIso = () => new Date().toISOString();
 const normalizeAddedTime = (raw: unknown) => {
   const value = normalizeMatchMinute(raw);
   return value != null && value > 0 ? value : null;
-};
-
-/**
- * التعليق الحي في في الجول يعيد عدّاد الشوط الثاني من 1، بينما الأحداث
- * الرسمية تستخدم الدقيقة المطلقة. توحيدهما هنا يمنع ظهور 5 بدل 50.
- */
-const normalizeCommentaryMinute = (raw: unknown, half: string | null) => {
-  const minute = normalizeMatchMinute(raw);
-  if (minute == null) return null;
-  if (/الشوط الثاني/i.test(half ?? "") && minute <= 50) return minute + 45;
-  return minute;
 };
 
 const decode = (value: string) =>
@@ -589,32 +573,6 @@ export function parseMatchDetail(html: string): MatchDetail | null {
   });
   const orderedEvents = sortMatchEvents(events);
 
-  const commentary = (
-    get<unknown[]>("Comments") ??
-    get<unknown[]>("Commentary") ??
-    get<unknown[]>("MatchComments") ??
-    []
-  )
-    .map((raw) => {
-      const c = raw as Record<string, never>;
-      return {
-        id: Number(c["Id"]),
-        minute: normalizeCommentaryMinute(
-          c["Time"],
-          (c["MatchStatusName"] as unknown as string) ?? null,
-        ),
-        text: decode(String(c["Content"] ?? "")),
-        half: (c["MatchStatusName"] as unknown as string) ?? null,
-      };
-    })
-    .filter((c) => c.text);
-  commentary.sort((a, b) => {
-    if (a.minute == null && b.minute == null) return a.id - b.id;
-    if (a.minute == null) return 1;
-    if (b.minute == null) return -1;
-    return a.minute - b.minute || a.id - b.id;
-  });
-
   return {
     id: `filgoal-${matchId}`,
     matchId,
@@ -650,20 +608,8 @@ export function parseMatchDetail(html: string): MatchDetail | null {
       String((raw as Record<string, never>)["TvChannelName"] ?? ""),
     ),
     events: orderedEvents,
-    timeline: buildTimeline(
-      orderedEvents,
-      commentary,
-      String(get<string>("HomeTeamName") ?? ""),
-      String(get<string>("AwayTeamName") ?? ""),
-      homeTeamId,
-      awayTeamId,
-    ),
-    stats: deriveStats(
-      commentary,
-      events,
-      String(get<string>("HomeTeamName") ?? ""),
-      String(get<string>("AwayTeamName") ?? ""),
-    ),
+    timeline: buildTimeline(orderedEvents),
+    stats: deriveStats(events, homeTeamId, awayTeamId),
 
     lineups: {
       home: homeSquad,
@@ -671,7 +617,6 @@ export function parseMatchDetail(html: string): MatchDetail | null {
       homeBench,
       awayBench,
     },
-    commentary,
   };
 }
 
@@ -737,113 +682,17 @@ export function parseCoverageEvents(
   return sortMatchEvents(events.reverse());
 }
 
-/* ------------------- كل أحداث المباراة (رسمية + مستنتجة من التعليق) ------------------ */
+/* ------------------------- أحداث وإحصائيات المباراة الرسمية ------------------------ */
 
-/** أنماط الأحداث اللي "في الجول" بيذكرها في التعليق الحي فقط. */
-const DERIVED_PATTERNS: { type: string; test: RegExp }[] = [
-  { type: "var", test: /تقنية الفيديو|حكم الفيديو|\bVAR\b|الـ ?var/i },
-  { type: "missed-penalty", test: /(يضيع|أضاع|أهدر|يهدر|ضائعة).{0,25}(ركلة|ضربة) جزاء/ },
-  { type: "penalty-saved", test: /(يتصدى|تصدى|أنقذ).{0,25}(ركلة|ضربة) جزاء/ },
-  { type: "penalty-awarded", test: /(ركلة|ضربة) جزاء/ },
-  { type: "injury", test: /إصاب|الطاقم الطبي|يتلقى العلاج|نقالة|الجهاز الطبي/ },
-  { type: "woodwork", test: /القائم|العارضة/ },
-  { type: "corner", test: /ركنية|كورنر/ },
-  { type: "offside", test: /تسلل/ },
-  { type: "save", test: /يتصدى|تصدى|ينقذ|أنقذ|تصدي الحارس/ },
-  { type: "freekick", test: /ركلة حرة|مخالفة/ },
-  { type: "shot", test: /تسديدة|يسدد|تصويبة|رأسية/ },
-  { type: "kick-off", test: /انطلاق|بداية الشوط|صافرة البداية/ },
-  { type: "half-time", test: /نهاية الشوط الأول/ },
-  { type: "full-time", test: /نهاية المباراة|صافرة النهاية/ },
-];
-
-function buildTimeline(
-  events: MatchEvent[],
-  commentary: { id: number; minute: number | null; text: string; half: string | null }[],
-  homeName: string,
-  awayName: string,
-  homeId: number,
-  awayId: number,
-): MatchEvent[] {
-  const isHome = teamMatcher(homeName);
-  const isAway = teamMatcher(awayName);
-  const derived: MatchEvent[] = [];
-
-  for (const c of commentary) {
-    // الأهداف والبطاقات والتبديلات موجودة أصلاً في الأحداث الرسمية.
-    if (/هدف|بطاقة|تبديل|يسجل|سجل/.test(c.text)) continue;
-    const match = DERIVED_PATTERNS.find((p) => p.test.test(c.text));
-    if (!match) continue;
-    // هذه علامات ملخصية، ومصدر التعليق يرسلها أحيانًا بعداد الشوط الحالي
-    // أو بتوقيت غير متسق؛ الأحداث الرسمية هي المصدر الوحيد لها.
-    if (["kick-off", "half-time", "full-time"].includes(match.type)) continue;
-
-    const home = isHome(c.text);
-    const away = isAway(c.text);
-    derived.push({
-      id: -c.id,
-      minute: c.minute,
-      addedTime: null,
-      type: match.type,
-      half: c.half,
-      teamId: home && !away ? homeId : away && !home ? awayId : null,
-      teamName: home && !away ? homeName : away && !home ? awayName : null,
-      player: null,
-      playerPhotoUrl: null,
-      relatedPlayer: null,
-      derived: true,
-      text: c.text,
-    });
-  }
-
-  return sortMatchEvents([...events, ...derived]);
+function buildTimeline(events: MatchEvent[]): MatchEvent[] {
+  return sortMatchEvents(events);
 }
 
-
-/* ------------------------- إحصائيات المباراة (استنتاج) ------------------------ */
-
-/** يطابق اسم فريق داخل نص التعليق (بالاسم الكامل أو أطول كلمة مميزة فيه). */
-const teamMatcher = (name: string) => {
-  const clean = name.replace(/منتخب|نادي/g, "").trim();
-  const tokens = clean.split(/\s+/).filter((t) => t.length >= 4);
-  return (text: string) =>
-    (clean.length > 2 && text.includes(clean)) || tokens.some((t) => text.includes(t));
-};
-
-/**
- * "في الجول" ما بيوفرش جدول إحصائيات جاهز، فبنستنتجه من التعليق الحي
- * (الاستحواذ بيتنشر كنص) ومن أحداث المباراة (البطاقات والتبديلات).
- */
 export function deriveStats(
-  commentary: { minute: number | null; text: string }[],
   events: MatchEvent[],
-  homeName: string,
-  awayName: string,
+  homeId: number,
+  awayId: number,
 ): MatchStats {
-  const isHome = teamMatcher(homeName);
-  const isAway = teamMatcher(awayName);
-
-  // آخر سطر استحواذ في التعليق: "الاستحواذ : 42% فريق أ مقابل 58% فريق ب."
-  let possession: MatchStats["possession"] = null;
-  for (const c of commentary) {
-    if (!c.text.includes("الاستحواذ")) continue;
-    const parts = [...c.text.matchAll(/(\d{1,3})\s*%\s*([^%]*?)(?:مقابل|\.|$)/g)].map((m) => ({
-      value: Number(m[1]),
-      who: m[2] ?? "",
-    }));
-    if (parts.length < 2) continue;
-    const homePart = parts.find((p) => isHome(p.who));
-    const awayPart = parts.find((p) => isAway(p.who));
-    const next =
-      homePart && awayPart
-        ? { home: homePart.value, away: awayPart.value }
-        : { home: parts[0]!.value, away: parts[1]!.value };
-    if (next.home + next.away >= 95 && next.home + next.away <= 105) {
-      possession = next;
-      break; // التعليق مرتب من الأحدث للأقدم
-    }
-  }
-
   const counters: Record<string, [number, number]> = {
     shots: [0, 0],
     onTarget: [0, 0],
@@ -857,32 +706,9 @@ export function deriveStats(
     const row = counters[key];
     if (row) row[side] += 1;
   };
-
-  for (const c of commentary) {
-    const t = c.text;
-    const home = isHome(t);
-    const away = isAway(t);
-    const side: 0 | 1 | null = home && !away ? 0 : away && !home ? 1 : null;
-    if (side == null) continue;
-
-    if (/تسديدة|تسدد|كرة رأسية|رأسية من/.test(t)) {
-      bump("shots", side);
-      if (/تصدى|أنقذ|أمسك|القائم|العارضة|داخل الشباك|في الشباك|هدف/.test(t))
-        bump("onTarget", side);
-    }
-    if (/ركنية/.test(t)) bump("corners", side);
-    if (/تسلل/.test(t)) bump("offsides", side);
-    if (/خطأ/.test(t)) bump("fouls", side === 0 ? 1 : 0);
-    if (/تصدى|أنقذ|أمسك الحارس|تصدي/.test(t)) bump("saves", side === 0 ? 1 : 0);
-  }
-
-  const homeId = events.find((e) => e.teamName && isHome(e.teamName))?.teamId ?? null;
   const eventSide = (e: MatchEvent): 0 | 1 | null => {
-    if (e.teamName) {
-      if (isHome(e.teamName)) return 0;
-      if (isAway(e.teamName)) return 1;
-    }
-    if (e.teamId != null && homeId != null) return e.teamId === homeId ? 0 : 1;
+    if (e.teamId === homeId) return 0;
+    if (e.teamId === awayId) return 1;
     return null;
   };
 
@@ -900,19 +726,20 @@ export function deriveStats(
   for (const e of events) {
     const side = eventSide(e);
     if (side == null) continue;
-    if (/yellow/i.test(e.type)) cards["yellow"]![side] += 1;
-    else if (/red/i.test(e.type)) cards["red"]![side] += 1;
-    else if (/substitution/i.test(e.type)) cards["subs"]![side] += 1;
-    else if (/corner/i.test(e.type)) eventCounts["corners"]![side] += 1;
-    else if (/offside/i.test(e.type)) eventCounts["offsides"]![side] += 1;
-    else if (/injury/i.test(e.type)) eventCounts["injuries"]![side] += 1;
+    const type = e.type.toLowerCase();
+    if (/yellow/i.test(type)) cards["yellow"]![side] += 1;
+    else if (/red/i.test(type)) cards["red"]![side] += 1;
+    else if (/substitution/i.test(type)) cards["subs"]![side] += 1;
+    else if (/corner/i.test(type)) eventCounts["corners"]![side] += 1;
+    else if (/offside/i.test(type)) eventCounts["offsides"]![side] += 1;
+    else if (/injury/i.test(type)) eventCounts["injuries"]![side] += 1;
+    else if (/shot|attempt/i.test(type)) bump("shots", side);
+    else if (/save/i.test(type)) bump("saves", side);
+    else if (/foul/i.test(type)) bump("fouls", side);
   }
 
-  // الأحداث الرسمية أدق من الاستنتاج من التعليق، فتحل مكانه لما تكون متاحة.
-  for (const key of ["corners", "offsides"] as const) {
-    const official = eventCounts[key]!;
-    if (official[0] + official[1] > 0) counters[key] = official;
-  }
+  counters["corners"] = eventCounts["corners"]!;
+  counters["offsides"] = eventCounts["offsides"]!;
 
   const labels: { key: string; label: string; from: Record<string, [number, number]> }[] = [
     { key: "shots", label: "التسديدات", from: counters },
@@ -940,7 +767,7 @@ export function deriveStats(
     })
     .filter((r) => r.home > 0 || r.away > 0);
 
-  return { possession, rows };
+  return { possession: null, rows };
 }
 
 

@@ -3652,7 +3652,11 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                       awayTeam: match.awayTeam,
                       visible: hasLineups,
                     ),
-                  _ => _CommentaryTab(commentary: detail.commentary),
+                   _ => _EventsTab(
+                       events: timeline,
+                       homeTeam: match.homeTeam,
+                       awayTeam: match.awayTeam,
+                     ),
                 },
               ],
             );
@@ -3904,12 +3908,11 @@ class _MatchDetailTabs extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
 
-  static const labels = ['الأحداث', 'الإحصائيات', 'التشكيل', 'التعليق'];
+  static const labels = ['الأحداث', 'الإحصائيات', 'التشكيل'];
   static const icons = [
     Icons.timeline_rounded,
     Icons.bar_chart_rounded,
     Icons.groups_rounded,
-    Icons.short_text_rounded,
   ];
 
   @override
@@ -4276,62 +4279,6 @@ class _LineupsTab extends StatelessWidget {
               players: detail.awayLineup,
               bench: detail.awayBench,
             ),
-          ],
-        );
-}
-
-class _CommentaryTab extends StatelessWidget {
-  const _CommentaryTab({required this.commentary});
-
-  final List<Map<String, dynamic>> commentary;
-
-  @override
-  Widget build(BuildContext context) => commentary.isEmpty
-      ? const _DetailTabPlaceholder(
-          message: 'لا يوجد تعليق متاح لهذه المباراة.',
-        )
-      : Column(
-          children: [
-            for (var index = 0; index < commentary.length; index++) ...[
-              if (index > 0) const SizedBox(height: 7),
-              Builder(
-                builder: (_) {
-                  final item = commentary[index];
-                  return SectionCard(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: kCardAlt,
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          child: Text(
-                            item['minute'] == null ? '—' : '${item['minute']}’',
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            item['text']?.toString() ?? '—',
-                            style: const TextStyle(height: 1.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
           ],
         );
 }

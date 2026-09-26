@@ -220,7 +220,6 @@ class MatchDetailData {
     required this.match,
     required this.events,
     required this.timeline,
-    required this.commentary,
     required this.homeLineup,
     required this.awayLineup,
     required this.homeBench,
@@ -237,7 +236,6 @@ class MatchDetailData {
   final Match match;
   final List<MatchEventModel> events;
   final List<MatchEventModel> timeline;
-  final List<Map<String, dynamic>> commentary;
   final List<LineupPlayer> homeLineup;
   final List<LineupPlayer> awayLineup;
   final List<LineupPlayer> homeBench;
@@ -258,9 +256,6 @@ class MatchDetailData {
         .toList() ?? const [];
     final lineups = (raw['lineups'] as Map?)?.cast<String, dynamic>() ?? const {};
     final stats = (raw['stats'] as Map?)?.cast<String, dynamic>() ?? const {};
-    final commentary = list('commentary').isNotEmpty
-        ? list('commentary')
-        : list('comments');
     final homeLineup = _lineup(
       lineups['home'] ?? raw['homeLineup'] ?? raw['homeSquad'],
     );
@@ -277,7 +272,6 @@ class MatchDetailData {
       match: Match.fromJson(raw),
       events: list('events').map(MatchEventModel.fromJson).toList(),
       timeline: list('timeline').map(MatchEventModel.fromJson).toList(),
-      commentary: commentary,
       homeLineup: homeLineup,
       awayLineup: awayLineup,
       homeBench: homeBench,
