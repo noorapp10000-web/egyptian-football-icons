@@ -6,6 +6,10 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+export type SourceStatus = typeof SourceStatus[keyof typeof SourceStatus];
+
+
+export const SourceStatus = {
+  live: 'live',
+  cached: 'cached',
+} as const;

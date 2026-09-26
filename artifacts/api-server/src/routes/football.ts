@@ -1,5 +1,4 @@
 import { Router, type Response } from "express";
-
 import {
   loadMatchDetail,
   loadMatches,
@@ -7,8 +6,9 @@ import {
   loadPlayerDetail,
   loadSquad,
   loadStandings,
-} from "../../../egyptian-football-hub/src/lib/filgoal.server";
-import { loadTransfermarktHeadToHead } from "../lib/transfermarkt";
+  loadTeam,
+} from "../lib/football-source";
+import { loadHeadToHead } from "../lib/head-to-head";
 
 const router = Router();
 
@@ -19,46 +19,21 @@ const IMAGE_HOSTS = new Set([
   "semedia.filgoal.com",
   "yallakora.com",
   "www.yallakora.com",
-  "elwatannews.com",
-  "www.elwatannews.com",
-  "youm7.com",
-  "www.youm7.com",
-  "masrawy.com",
-  "www.masrawy.com",
-  "kooora.com",
-  "www.kooora.com",
+  "transfermarkt.com",
+  "www.transfermarkt.com",
+  "img.a.transfermarkt.technology",
   "kingfut.com",
   "www.kingfut.com",
-  "cairo24.com",
-  "www.cairo24.com",
-  "btolat.com",
-  "www.btolat.com",
-  "almasryalyoum.com",
-  "www.almasryalyoum.com",
-  "wataninet.com",
-  "www.wataninet.com",
-  "akhbarelyom.com",
-  "www.akhbarelyom.com",
-  "elbalad.news",
-  "www.elbalad.news",
-  "sadaelbalad.com",
-  "www.sadaelbalad.com",
-  "shbabbek.com",
-  "www.shbabbek.com",
-  "newturkpost.com",
-  "www.newturkpost.com",
-  "elghad.news",
-  "www.elghad.news",
+  "news.google.com",
 ]);
 
-const isAllowedImageHost = (hostname: string) => {
-  const normalized = hostname.toLowerCase();
-  return [...IMAGE_HOSTS].some(
-    (host) => normalized === host || normalized.endsWith(`.${host}`),
-  );
-};
+function setPublicCache(res: Response, maxAge: number, staleWhileRevalidate: number) {
+  const value = `public, max-age=${maxAge}, s-maxage=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`;
+  res.setHeader("Cache-Control", value);
+  res.setHeader("CDN-Cache-Control", value);
+}
 
-router.get("/football/image", async (req, res) => {
+router.get("/football/image", (req, res) => {
   const rawUrl = typeof req.query.url === "string" ? req.query.url : "";
   let target: URL;
   try {
@@ -67,60 +42,31 @@ router.get("/football/image", async (req, res) => {
     res.status(400).json({ error: "invalid_image_url" });
     return;
   }
-
-  if (target.protocol !== "https:" || !isAllowedImageHost(target.hostname)) {
+  const hostname = target.hostname.toLowerCase();
+  const allowed = [...IMAGE_HOSTS].some((host) => hostname === host || hostname.endsWith(`.${host}`));
+  if (target.protocol !== "https:" || !allowed) {
     res.status(403).json({ error: "image_host_not_allowed" });
     return;
   }
-
-  // Backwards-compatible endpoint: redirect the client to the source. Replit
-  // never downloads, stores, or streams the image bytes.
-  const redirectCacheControl = "public, max-age=86400, s-maxage=86400";
-  res
-    .setHeader("Cache-Control", redirectCacheControl)
-    .setHeader("CDN-Cache-Control", redirectCacheControl)
-    .redirect(302, target.toString());
+  setPublicCache(res, 86_400, 86_400);
+  res.redirect(302, target.toString());
 });
-
-function setPublicCache(
-  res: Response,
-  maxAgeSeconds: number,
-  staleWhileRevalidateSeconds: number,
-) {
-  const cacheControl = `public, max-age=${maxAgeSeconds}, s-maxage=${maxAgeSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`;
-  res.setHeader("Cache-Control", cacheControl);
-  res.setHeader("CDN-Cache-Control", cacheControl);
-}
-
-function matchesHttpTtl(matches: Awaited<ReturnType<typeof loadMatches>>["matches"]) {
-  if (matches.some((match) => match.status === "live")) {
-    return { maxAge: 20, swr: 5 };
-  }
-  const now = Date.now();
-  const soon = matches.some((match) => {
-    if (match.status !== "upcoming" || !match.kickoff) return false;
-    const kickoff = Date.parse(match.kickoff);
-    return Number.isFinite(kickoff) && kickoff - now <= 90 * 60_000 && kickoff - now > -3 * 60 * 60_000;
-  });
-  return soon ? { maxAge: 60, swr: 15 } : { maxAge: 3600, swr: 300 };
-}
 
 router.get("/football/matches", async (_req, res) => {
   const data = await loadMatches();
-  const ttl = matchesHttpTtl(data.matches);
-  setPublicCache(res, ttl.maxAge, ttl.swr);
+  const live = data.matches.some((match) => match.status === "live");
+  setPublicCache(res, live ? 20 : 3_600, live ? 5 : 300);
   res.json(data);
 });
 
 router.get("/football/matches/:matchId", async (req, res) => {
   const matchId = Number(req.params.matchId);
-  if (!Number.isInteger(matchId)) {
+  if (!Number.isInteger(matchId) || matchId <= 0) {
     res.status(400).json({ error: "invalid_match_id" });
     return;
   }
   const data = await loadMatchDetail(matchId);
-  const ttl = data.match.status === "live" ? { maxAge: 20, swr: 5 } : { maxAge: 3600, swr: 300 };
-  setPublicCache(res, ttl.maxAge, ttl.swr);
+  setPublicCache(res, data.match.status === "live" ? 20 : 3_600, data.match.status === "live" ? 5 : 300);
   res.json(data);
 });
 
@@ -131,41 +77,47 @@ router.get("/football/head-to-head", async (req, res) => {
     return;
   }
   try {
-    const data = await loadTransfermarktHeadToHead(opponent);
-    setPublicCache(res, 21_600, 900);
+    const data = await loadHeadToHead(opponent);
+    setPublicCache(res, 172_800, 3_600);
     res.json(data);
   } catch (error) {
-    req.log?.warn({ err: error, opponent }, "Transfermarkt head-to-head unavailable");
+    req.log?.warn({ err: error, opponent }, "Head-to-head source unavailable");
     res.status(502).json({ error: "head_to_head_unavailable" });
   }
 });
 
 router.get("/football/players/:playerId", async (req, res) => {
   const playerId = Number(req.params.playerId);
-  if (!Number.isInteger(playerId)) {
+  if (!Number.isInteger(playerId) || playerId <= 0) {
     res.status(400).json({ error: "invalid_player_id" });
     return;
   }
   const data = await loadPlayerDetail(playerId);
-  setPublicCache(res, 7200, 900);
+  setPublicCache(res, 7_200, 900);
   res.json(data);
 });
 
 router.get("/football/squad", async (_req, res) => {
   const data = await loadSquad();
-  setPublicCache(res, 86400, 3600);
+  setPublicCache(res, 86_400, 3_600);
+  res.json(data);
+});
+
+router.get("/football/team", async (_req, res) => {
+  const data = await loadTeam();
+  setPublicCache(res, 86_400, 3_600);
   res.json(data);
 });
 
 router.get("/football/standings", async (_req, res) => {
   const data = await loadStandings();
-  setPublicCache(res, 7200, 900);
+  setPublicCache(res, 7_200, 900);
   res.json(data);
 });
 
 router.get("/football/news", async (_req, res) => {
   const data = await loadNews();
-  setPublicCache(res, 3600, 300);
+  setPublicCache(res, 3_600, 300);
   res.json(data);
 });
 

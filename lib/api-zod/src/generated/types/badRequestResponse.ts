@@ -5,7 +5,9 @@
  * Public football data API for Egyptian Football Icons
  * OpenAPI spec version: 1.0.0
  */
+import type { ErrorResponse } from './errorResponse';
 
-export interface HealthStatus {
-  status: string;
-}
+/**
+ * Invalid request
+ */
+export type BadRequestResponse = ErrorResponse;

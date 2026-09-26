@@ -5,7 +5,10 @@
  * Public football data API for Egyptian Football Icons
  * OpenAPI spec version: 1.0.0
  */
+import type { Match } from './match';
+import type { Source } from './source';
 
-export interface HealthStatus {
-  status: string;
+export interface MatchesResponse {
+  matches: Match[];
+  source: Source;
 }

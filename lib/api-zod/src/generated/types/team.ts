@@ -6,6 +6,10 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface Team {
+  /** @nullable */
+  id: number | null;
+  name: string;
+  /** @nullable */
+  crestUrl: string | null;
 }

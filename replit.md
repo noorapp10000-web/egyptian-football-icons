@@ -1,7 +1,6 @@
-# Egyptian Football Icons
+# Egyptian Football API
 
-منصة متابعة المصري البورسعيدي: المباريات والأحداث لحظة بلحظة، الأخبار، اللاعبين،
-الإحصائيات، الترتيب، التشكيلات، وتاريخ النادي، مع تطبيق Flutter وواجهة ويب مساندة.
+REST API for the Egyptian Football Icons Flutter app. It serves El Masry matches, match details and lineups, squad/team data, standings, news, player profiles, and historical head-to-head meetings.
 
 ## Run & Operate
 
@@ -10,7 +9,7 @@
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- No runtime secret is required for the public football data routes. Optional Firebase variables from the source mobile app are not needed by this API.
 
 ## Stack
 
@@ -23,37 +22,31 @@
 
 ## Where things live
 
-- `flutter_app/` — تطبيق Flutter الأساسي وواجهاته العربية.
-- `artifacts/api-server/` — API عام تحت `/api` يقرأ البيانات من في الجول ويخزنها مؤقتًا.
-- `artifacts/egyptian-football-hub/` — واجهة ويب مساندة بنفس البيانات والهوية.
-- `artifacts/egyptian-football-hub/src/lib/filgoal.server.ts` — النماذج، القراءة، الكاش،
-  وتوحيد الأحداث والدقائق.
-- `artifacts/egyptian-football-hub/src/lib/match-events.ts` — أنواع الأحداث وتطبيع الدقيقة.
-- `flutter_app/lib/screens/app_shell.dart` — الشاشات والتنقل وتفاصيل المباراة.
+- `artifacts/api-server/src/routes/football.ts` — public football endpoints, caching headers, and image redirect allowlist.
+- `artifacts/api-server/src/lib/football-source.ts` — FilGoal parsers, upstream fetch timeout, and in-memory stale cache.
+- `artifacts/api-server/src/lib/head-to-head.ts` — Transfermarkt historical meetings with a cached fallback for the known El Masry–Ittihad matchup.
+- `lib/api-spec/openapi.yaml` — source of truth for all public API contracts.
 
 ## Architecture decisions
 
-- كل البيانات الخارجية تمر من خلال API السيرفر، ولا يتصل تطبيق Flutter بالمصادر الخارجية مباشرة.
-- الأحداث الرسمية تستخدم الدقيقة المطلقة، بينما التعليق الحي قد يعيد عداد الشوط الثاني من 1؛
-  يتم توحيد ذلك قبل إرساله للعميل.
-- الأحداث في تفاصيل المباراة تُعرض كخط زمني مركزي: أحداث الفريق الضيف يسارًا وأحداث الفريق المضيف
-  يمينًا، مع الدقيقة والعلامة البصرية في المنتصف.
-- صور الفرق واللاعبين تمر عبر كاش الصور والبيانات تُعاد من الكاش عند فشل المصدر مؤقتًا.
+- Upstream data is fetched server-side so the Flutter client never scrapes FilGoal or Transfermarkt directly.
+- Responses use public CDN-friendly cache headers, while the API also keeps stale in-memory data for short upstream outages.
+- The head-to-head endpoint falls back to a checked-in recent snapshot for Ittihad Alexandria when Transfermarkt blocks the server.
+- Image URLs are redirected only for explicitly approved HTTPS hosts; arbitrary proxying is rejected.
 
 ## Product
 
-التطبيق يعرض الرئيسية، المباريات والنتائج، تفاصيل الحدث والتعليق، الإحصائيات،
-التشكيلات على ملعب، قائمة الفريق واللاعبين، الأخبار، جدول الدوري، وتاريخ النادي.
+The API powers a native football hub focused on El Masry SC, with live/upcoming/results views, detailed match center data, team information, league context, news, and historical rivalries.
 
 ## User preferences
 
-- الحفاظ على ألوان المصري الحالية مع تحسين الوضوح والحركة والأيقونات، والواجهة عربية RTL.
-- عدم خلط أحداث الفريقين في قائمة واحدة، وعدم عرض الدقيقة النسبية للشوط الثاني كما لو كانت مطلقة.
+_Populate as you build — explicit user instructions worth remembering across sessions._
 
 ## Gotchas
 
-- يجب تشغيل `pnpm install --frozen-lockfile` بعد جلب ملفات الفرع قبل فحص TypeScript.
-- توحيد أي مصدر بيانات جديد عبر `normalizeMatchMinute` و`normalizeCommentaryMinute` قبل عرضه.
+- Run `pnpm --filter @workspace/api-spec run codegen` after changing `lib/api-spec/openapi.yaml`.
+- Use the shared proxy path `/api/...` when checking routes locally; the service itself listens on the workflow-provided `PORT`.
+- A match before kickoff may correctly return empty events and lineups; confirmed lineups are supplied by the upstream match model when available.
 
 ## Pointers
 

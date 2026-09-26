@@ -2,21 +2,20 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Public football data API for Egyptian Football Icons
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: football
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +23,383 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /football/matches:
+    get:
+      operationId: getMatches
+      tags: [football]
+      summary: List recent and upcoming El Masry matches
+      responses:
+        "200":
+          description: Match list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchesResponse"
+  /football/matches/{matchId}:
+    get:
+      operationId: getMatchDetail
+      tags: [football]
+      summary: Get match details, events, lineups, and formations
+      parameters:
+        - $ref: "#/components/parameters/MatchId"
+      responses:
+        "200":
+          description: Match details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /football/head-to-head:
+    get:
+      operationId: getHeadToHead
+      tags: [football]
+      summary: Get El Masry historical meetings with an opponent
+      parameters:
+        - name: opponent
+          in: query
+          required: true
+          schema:
+            type: string
+          example: الاتحاد السكندري
+      responses:
+        "200":
+          description: Historical meetings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeadToHeadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /football/news:
+    get:
+      operationId: getNews
+      tags: [football]
+      summary: Get recent team news
+      responses:
+        "200":
+          description: News list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsResponse"
+  /football/squad:
+    get:
+      operationId: getSquad
+      tags: [football]
+      summary: Get the current team squad and coach
+      responses:
+        "200":
+          description: Squad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SquadResponse"
+  /football/team:
+    get:
+      operationId: getTeam
+      tags: [football]
+      summary: Get team profile and squad
+      responses:
+        "200":
+          description: Team profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamResponse"
+  /football/standings:
+    get:
+      operationId: getStandings
+      tags: [football]
+      summary: Get current league standings
+      responses:
+        "200":
+          description: Standings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StandingsResponse"
+  /football/players/{playerId}:
+    get:
+      operationId: getPlayerDetail
+      tags: [football]
+      summary: Get a player profile
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Player profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  player:
+                    $ref: "#/components/schemas/Player"
+                  source:
+                    $ref: "#/components/schemas/Source"
+                required: [player, source]
+  /football/image:
+    get:
+      operationId: redirectFootballImage
+      tags: [football]
+      summary: Redirect an approved remote image URL
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+      responses:
+        "302":
+          description: Image redirect
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Image host is not approved
 components:
+  parameters:
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UpstreamUnavailable:
+      description: Source provider unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    Source:
+      type: object
+      properties:
+        name: { type: string }
+        url: { type: string, format: uri }
+        fetchedAt: { type: string, format: date-time }
+        status: { type: string, enum: [live, cached] }
+      required: [name, url, fetchedAt, status]
+    Team:
+      type: object
+      properties:
+        id: { type: [integer, "null"] }
+        name: { type: string }
+        crestUrl: { type: [string, "null"], format: uri }
+      required: [id, name, crestUrl]
+    Match:
+      type: object
+      properties:
+        id: { type: string }
+        matchId: { type: integer }
+        slug: { type: string }
+        competition: { type: string }
+        competitionId: { type: [integer, "null"] }
+        round: { type: [string, "null"] }
+        kickoff: { type: [string, "null"], format: date-time }
+        kickoffText: { type: [string, "null"] }
+        venue: { type: [string, "null"] }
+        statusText: { type: string }
+        status: { type: string, enum: [upcoming, live, finished, postponed] }
+        homeTeam: { $ref: "#/components/schemas/Team" }
+        awayTeam: { $ref: "#/components/schemas/Team" }
+        homeScore: { type: [integer, "null"] }
+        awayScore: { type: [integer, "null"] }
+        url: { type: string, format: uri }
+      required: [id, matchId, slug, competition, status, homeTeam, awayTeam, url]
+    MatchesResponse:
+      type: object
+      properties:
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/Match" }
+        source: { $ref: "#/components/schemas/Source" }
+      required: [matches, source]
+    LineupPlayer:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        number: { type: [integer, "null"] }
+        position: { type: string }
+        photoUrl: { type: [string, "null"], format: uri }
+        minutesPlayed: { type: [integer, "null"] }
+        isCaptain: { type: boolean }
+        isSpare: { type: boolean }
+      required: [id, name, position, isCaptain, isSpare]
+    MatchEvent:
+      type: object
+      properties:
+        id: { type: integer }
+        minute: { type: [integer, "null"] }
+        addedTime: { type: [integer, "null"] }
+        type: { type: string }
+        half: { type: [string, "null"] }
+        teamId: { type: [integer, "null"] }
+        teamName: { type: [string, "null"] }
+        player: { type: [string, "null"] }
+        playerPhotoUrl: { type: [string, "null"], format: uri }
+        relatedPlayer: { type: [string, "null"] }
+      required: [id, type]
+    MatchDetail:
+      allOf:
+        - $ref: "#/components/schemas/Match"
+        - type: object
+          properties:
+            referee: { type: [string, "null"] }
+            stadium: { type: [string, "null"] }
+            homeCoach: { type: [string, "null"] }
+            awayCoach: { type: [string, "null"] }
+            homeFormation: { type: [string, "null"] }
+            awayFormation: { type: [string, "null"] }
+            tvChannels: { type: array, items: { type: string } }
+            events: { type: array, items: { $ref: "#/components/schemas/MatchEvent" } }
+            timeline: { type: array, items: { $ref: "#/components/schemas/MatchEvent" } }
+            lineups:
+              type: object
+              properties:
+                home: { type: array, items: { $ref: "#/components/schemas/LineupPlayer" } }
+                away: { type: array, items: { $ref: "#/components/schemas/LineupPlayer" } }
+                homeBench: { type: array, items: { $ref: "#/components/schemas/LineupPlayer" } }
+                awayBench: { type: array, items: { $ref: "#/components/schemas/LineupPlayer" } }
+              required: [home, away, homeBench, awayBench]
+          required: [tvChannels, events, timeline, lineups]
+    MatchDetailResponse:
+      type: object
+      properties:
+        match: { $ref: "#/components/schemas/MatchDetail" }
+        source: { $ref: "#/components/schemas/Source" }
+      required: [match, source]
+    Player:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        number: { type: [integer, "null"] }
+        position: { type: string }
+        nationality: { type: string }
+        photoUrl: { type: [string, "null"], format: uri }
+        url: { type: string, format: uri }
+        goals: { type: [integer, "null"] }
+        appearances: { type: [integer, "null"] }
+        scoringRate: { type: [number, "null"] }
+      required: [id, name, position, nationality, url]
+    SquadResponse:
+      type: object
+      properties:
+        players: { type: array, items: { $ref: "#/components/schemas/Player" } }
+        coach:
+          type: object
+          additionalProperties: true
+        scorers:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        source: { $ref: "#/components/schemas/Source" }
+      required: [players, coach, scorers, source]
+    TeamResponse:
+      type: object
+      properties:
+        team: { $ref: "#/components/schemas/Team" }
+        players: { type: array, items: { $ref: "#/components/schemas/Player" } }
+        coach:
+          type: object
+          additionalProperties: true
+        scorers:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        source: { $ref: "#/components/schemas/Source" }
+      required: [team, players, coach, scorers, source]
+    Standing:
+      type: object
+      properties:
+        rank: { type: integer }
+        team: { $ref: "#/components/schemas/Team" }
+        played: { type: integer }
+        won: { type: integer }
+        drawn: { type: integer }
+        lost: { type: integer }
+        goalsFor: { type: integer }
+        goalsAgainst: { type: integer }
+        points: { type: integer }
+        isMasry: { type: boolean }
+      required: [rank, team, played, won, drawn, lost, goalsFor, goalsAgainst, points, isMasry]
+    StandingsResponse:
+      type: object
+      properties:
+        standings: { type: array, items: { $ref: "#/components/schemas/Standing" } }
+        source: { $ref: "#/components/schemas/Source" }
+      required: [standings, source]
+    NewsItem:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        url: { type: string, format: uri }
+        imageUrl: { type: [string, "null"], format: uri }
+        publishedText: { type: [string, "null"] }
+        publishedAt: { type: [string, "null"], format: date-time }
+        sourceName: { type: string }
+      required: [id, title, url, sourceName]
+    NewsResponse:
+      type: object
+      properties:
+        news: { type: array, items: { $ref: "#/components/schemas/NewsItem" } }
+        source: { $ref: "#/components/schemas/Source" }
+      required: [news, source]
+    HeadToHeadMeeting:
+      type: object
+      additionalProperties: true
+    HeadToHeadResponse:
+      type: object
+      properties:
+        opponent:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+          required: [id, name]
+        source: { $ref: "#/components/schemas/Source" }
+        summary:
+          type: object
+          additionalProperties: true
+        topScorer:
+          type: [object, "null"]
+        meetings:
+          type: array
+          items: { $ref: "#/components/schemas/HeadToHeadMeeting" }
+      required: [opponent, source, summary, meetings]

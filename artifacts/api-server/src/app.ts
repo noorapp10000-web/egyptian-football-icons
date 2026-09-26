@@ -31,4 +31,10 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+app.use((error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  req.log?.error({ err: error }, "Unhandled API request error");
+  if (res.headersSent) return;
+  res.status(502).json({ error: "upstream_unavailable" });
+});
+
 export default app;
