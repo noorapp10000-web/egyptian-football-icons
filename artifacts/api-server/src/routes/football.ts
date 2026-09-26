@@ -74,8 +74,10 @@ router.get("/football/image", async (req, res) => {
 
   // Backwards-compatible endpoint: redirect the client to the source. Replit
   // never downloads, stores, or streams the image bytes.
+  const redirectCacheControl = "public, max-age=86400, s-maxage=86400";
   res
-    .setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400")
+    .setHeader("Cache-Control", redirectCacheControl)
+    .setHeader("CDN-Cache-Control", redirectCacheControl)
     .redirect(302, target.toString());
 });
 
@@ -84,10 +86,9 @@ function setPublicCache(
   maxAgeSeconds: number,
   staleWhileRevalidateSeconds: number,
 ) {
-  res.setHeader(
-    "Cache-Control",
-    `public, max-age=${maxAgeSeconds}, s-maxage=${maxAgeSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`,
-  );
+  const cacheControl = `public, max-age=${maxAgeSeconds}, s-maxage=${maxAgeSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`;
+  res.setHeader("Cache-Control", cacheControl);
+  res.setHeader("CDN-Cache-Control", cacheControl);
 }
 
 function matchesHttpTtl(matches: Awaited<ReturnType<typeof loadMatches>>["matches"]) {
