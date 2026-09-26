@@ -8,6 +8,7 @@ import {
   loadSquad,
   loadStandings,
 } from "../../../egyptian-football-hub/src/lib/filgoal.server";
+import { loadTransfermarktHeadToHead } from "../lib/transfermarkt";
 
 const router = Router();
 
@@ -121,6 +122,22 @@ router.get("/football/matches/:matchId", async (req, res) => {
   const ttl = data.match.status === "live" ? { maxAge: 20, swr: 5 } : { maxAge: 3600, swr: 300 };
   setPublicCache(res, ttl.maxAge, ttl.swr);
   res.json(data);
+});
+
+router.get("/football/head-to-head", async (req, res) => {
+  const opponent = typeof req.query.opponent === "string" ? req.query.opponent.trim() : "";
+  if (!opponent) {
+    res.status(400).json({ error: "missing_opponent" });
+    return;
+  }
+  try {
+    const data = await loadTransfermarktHeadToHead(opponent);
+    setPublicCache(res, 21_600, 900);
+    res.json(data);
+  } catch (error) {
+    req.log?.warn({ err: error, opponent }, "Transfermarkt head-to-head unavailable");
+    res.status(502).json({ error: "head_to_head_unavailable" });
+  }
 });
 
 router.get("/football/players/:playerId", async (req, res) => {

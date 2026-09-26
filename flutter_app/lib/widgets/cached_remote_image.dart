@@ -45,6 +45,9 @@ String _imageSource(String? value) {
     'www.newturkpost.com',
     'elghad.news',
     'www.elghad.news',
+    'transfermarkt.com',
+    'www.transfermarkt.com',
+    'img.a.transfermarkt.technology',
   };
   final host = uri?.host.toLowerCase() ?? '';
   final isAllowed = imageHosts.any(

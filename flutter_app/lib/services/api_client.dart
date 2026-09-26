@@ -136,6 +136,13 @@ class ApiClient {
   Future<Map<String, dynamic>> getMatchDetail(int id) =>
       _get('/football/matches/$id');
 
+  Future<HeadToHeadData> getHeadToHead(String opponent) async {
+    final data = await _get(
+      '/football/head-to-head?opponent=${Uri.encodeQueryComponent(opponent)}',
+    );
+    return HeadToHeadData.fromJson(data);
+  }
+
   Future<Map<String, dynamic>> getPlayerDetail(int id) =>
       _get('/football/players/$id');
 

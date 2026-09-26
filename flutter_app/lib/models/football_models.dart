@@ -305,6 +305,149 @@ class MatchDetailData {
       : const [];
 }
 
+class HeadToHeadSummary {
+  const HeadToHeadSummary({
+    required this.total,
+    required this.wins,
+    required this.draws,
+    required this.losses,
+    required this.goalsFor,
+    required this.goalsAgainst,
+    required this.seasons,
+    required this.competitions,
+  });
+
+  final int total;
+  final int wins;
+  final int draws;
+  final int losses;
+  final int goalsFor;
+  final int goalsAgainst;
+  final int seasons;
+  final int competitions;
+
+  factory HeadToHeadSummary.fromJson(Map<String, dynamic> json) =>
+      HeadToHeadSummary(
+        total: _firstInt(json, const ['total']) ?? 0,
+        wins: _firstInt(json, const ['wins']) ?? 0,
+        draws: _firstInt(json, const ['draws']) ?? 0,
+        losses: _firstInt(json, const ['losses']) ?? 0,
+        goalsFor: _firstInt(json, const ['goalsFor']) ?? 0,
+        goalsAgainst: _firstInt(json, const ['goalsAgainst']) ?? 0,
+        seasons: _firstInt(json, const ['seasons']) ?? 0,
+        competitions: _firstInt(json, const ['competitions']) ?? 0,
+      );
+}
+
+class HeadToHeadMeeting {
+  const HeadToHeadMeeting({
+    required this.id,
+    required this.season,
+    required this.competition,
+    required this.date,
+    required this.homeTeam,
+    required this.awayTeam,
+    required this.homeTeamId,
+    required this.awayTeamId,
+    required this.homeCrestUrl,
+    required this.awayCrestUrl,
+    required this.homeScore,
+    required this.awayScore,
+    required this.result,
+    required this.matchReportUrl,
+  });
+
+  final String id;
+  final String? season;
+  final String competition;
+  final String? date;
+  final String homeTeam;
+  final String awayTeam;
+  final int? homeTeamId;
+  final int? awayTeamId;
+  final String? homeCrestUrl;
+  final String? awayCrestUrl;
+  final int? homeScore;
+  final int? awayScore;
+  final String result;
+  final String? matchReportUrl;
+
+  factory HeadToHeadMeeting.fromJson(Map<String, dynamic> json) =>
+      HeadToHeadMeeting(
+        id: json['id']?.toString() ?? '',
+        season: json['season']?.toString(),
+        competition: json['competition']?.toString() ?? 'مباراة',
+        date: json['date']?.toString(),
+        homeTeam: json['homeTeam']?.toString() ?? '—',
+        awayTeam: json['awayTeam']?.toString() ?? '—',
+        homeTeamId: _firstInt(json, const ['homeTeamId']),
+        awayTeamId: _firstInt(json, const ['awayTeamId']),
+        homeCrestUrl: json['homeCrestUrl']?.toString(),
+        awayCrestUrl: json['awayCrestUrl']?.toString(),
+        homeScore: _firstInt(json, const ['homeScore']),
+        awayScore: _firstInt(json, const ['awayScore']),
+        result: json['result']?.toString() ?? 'unknown',
+        matchReportUrl: json['matchReportUrl']?.toString(),
+      );
+}
+
+class HeadToHeadScorer {
+  const HeadToHeadScorer({
+    required this.name,
+    required this.photoUrl,
+    required this.goals,
+    required this.appearances,
+  });
+
+  final String name;
+  final String? photoUrl;
+  final int? goals;
+  final int? appearances;
+
+  factory HeadToHeadScorer.fromJson(Map<String, dynamic> json) =>
+      HeadToHeadScorer(
+        name: json['name']?.toString() ?? '—',
+        photoUrl: json['photoUrl']?.toString(),
+        goals: _firstInt(json, const ['goals']),
+        appearances: _firstInt(json, const ['appearances']),
+      );
+}
+
+class HeadToHeadData {
+  const HeadToHeadData({
+    required this.opponentName,
+    required this.summary,
+    required this.meetings,
+    this.topScorer,
+    this.sourceUrl,
+  });
+
+  final String opponentName;
+  final HeadToHeadSummary summary;
+  final List<HeadToHeadMeeting> meetings;
+  final HeadToHeadScorer? topScorer;
+  final String? sourceUrl;
+
+  factory HeadToHeadData.fromJson(Map<String, dynamic> json) {
+    final opponent = (json['opponent'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final summary = (json['summary'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final scorer = (json['topScorer'] as Map?)?.cast<String, dynamic>();
+    final meetings = (json['meetings'] as List?)
+            ?.whereType<Map>()
+            .map((item) => HeadToHeadMeeting.fromJson(item.cast<String, dynamic>()))
+            .toList() ??
+        const <HeadToHeadMeeting>[];
+    final source = (json['source'] as Map?)?.cast<String, dynamic>();
+    return HeadToHeadData(
+      opponentName: opponent['name']?.toString() ?? 'المنافس',
+      summary: HeadToHeadSummary.fromJson(summary),
+      meetings: meetings,
+      topScorer: scorer == null ? null : HeadToHeadScorer.fromJson(scorer),
+      sourceUrl: source?['url']?.toString(),
+    );
+  }
+}
+
 class Standing {
   const Standing({
     required this.rank,

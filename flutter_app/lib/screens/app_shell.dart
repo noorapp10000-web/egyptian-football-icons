@@ -3541,23 +3541,39 @@ class MatchDetailScreen extends StatefulWidget {
 }
 
 class _MatchDetailScreenState extends State<MatchDetailScreen> {
-  late Future<Map<String, dynamic>> _future;
+  late Future<_MatchRoomData> _future;
   Timer? _refreshTimer;
   int _selectedTab = 0;
+
+  Future<_MatchRoomData> _loadMatchRoom() async {
+    final payload = await widget.api.getMatchDetail(widget.matchId);
+    final detail = MatchDetailData.fromJson(payload);
+    final match = detail.match;
+    final opponent = match.homeTeam.name.contains('المصري')
+        ? match.awayTeam
+        : match.homeTeam;
+    HeadToHeadData? headToHead;
+    try {
+      headToHead = await widget.api.getHeadToHead(opponent.name);
+    } catch (_) {
+      // The match room remains usable if the historical source is unavailable.
+    }
+    return _MatchRoomData(detail: detail, headToHead: headToHead);
+  }
 
   @override
   void initState() {
     super.initState();
-    _future = widget.api.getMatchDetail(widget.matchId);
+    _future = _loadMatchRoom();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) {
-        setState(() => _future = widget.api.getMatchDetail(widget.matchId));
+        setState(() => _future = _loadMatchRoom());
       }
     });
   }
 
   void _retry() =>
-      setState(() => _future = widget.api.getMatchDetail(widget.matchId));
+      setState(() => _future = _loadMatchRoom());
 
   @override
   void dispose() {
@@ -3582,7 +3598,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
             ),
           ],
         ),
-        body: FutureBuilder<Map<String, dynamic>>(
+        body: FutureBuilder<_MatchRoomData>(
           future: _future,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting)
@@ -3590,7 +3606,8 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
             if (snapshot.hasError || snapshot.data == null) {
               return ErrorState(title: 'تفاصيل المباراة', onRetry: _retry);
             }
-            final detail = MatchDetailData.fromJson(snapshot.data!);
+            final detail = snapshot.data!.detail;
+            final headToHead = snapshot.data!.headToHead;
             final match = detail.match;
             final timeline =
                 detail.timeline.isNotEmpty ? detail.timeline : detail.events;
@@ -3652,6 +3669,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                       awayTeam: match.awayTeam,
                       visible: hasLineups,
                     ),
+                  3 => _HeadToHeadTab(data: headToHead),
                    _ => _EventsTab(
                        events: timeline,
                        homeTeam: match.homeTeam,
@@ -3663,6 +3681,13 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
           },
         ),
       );
+}
+
+class _MatchRoomData {
+  const _MatchRoomData({required this.detail, required this.headToHead});
+
+  final MatchDetailData detail;
+  final HeadToHeadData? headToHead;
 }
 
 class _MatchScoreHero extends StatelessWidget {
@@ -3908,11 +3933,12 @@ class _MatchDetailTabs extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
 
-  static const labels = ['الأحداث', 'الإحصائيات', 'التشكيل'];
+  static const labels = ['الأحداث', 'الإحصائيات', 'التشكيل', 'المواجهات'];
   static const icons = [
     Icons.timeline_rounded,
     Icons.bar_chart_rounded,
     Icons.groups_rounded,
+    Icons.history_rounded,
   ];
 
   @override
@@ -4244,6 +4270,394 @@ class _StatsTab extends StatelessWidget {
             ),
           ],
         );
+}
+
+class _HeadToHeadTab extends StatelessWidget {
+  const _HeadToHeadTab({required this.data});
+
+  final HeadToHeadData? data;
+
+  @override
+  Widget build(BuildContext context) {
+    final history = data;
+    if (history == null) {
+      return const _DetailTabPlaceholder(
+        message: 'المواجهات التاريخية غير متاحة حاليًا.',
+      );
+    }
+
+    final summary = history.summary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 17, 16, 15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [Color(0xff275d48), Color(0xff102c24)],
+            ),
+            border: Border.all(color: kPrimary.withOpacity(.36)),
+            boxShadow: [
+              BoxShadow(
+                color: kPrimary.withOpacity(.08),
+                blurRadius: 22,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: kGold.withOpacity(.16),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: kGold.withOpacity(.35)),
+                ),
+                child: const Icon(Icons.history_rounded, color: kGold),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'المواجهات عبر التاريخ',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'كل المواسم والبطولات أمام ${history.opponentName}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${summary.total}',
+                style: const TextStyle(
+                  color: kGold,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        SectionCard(
+          padding: const EdgeInsets.fromLTRB(10, 13, 10, 12),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _HeadToHeadStat(
+                      value: '${summary.wins}',
+                      label: 'فوز المصري',
+                      color: kPrimary,
+                    ),
+                  ),
+                  Expanded(
+                    child: _HeadToHeadStat(
+                      value: '${summary.draws}',
+                      label: 'تعادل',
+                      color: kGold,
+                    ),
+                  ),
+                  Expanded(
+                    child: _HeadToHeadStat(
+                      value: '${summary.losses}',
+                      label: 'فوز المنافس',
+                      color: const Color(0xffe77777),
+                    ),
+                  ),
+                  Expanded(
+                    child: _HeadToHeadStat(
+                      value: '${summary.goalsFor} - ${summary.goalsAgainst}',
+                      label: 'الأهداف',
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.layers_outlined, size: 14, color: kMuted),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${summary.seasons} موسم · ${summary.competitions} بطولة',
+                    style: const TextStyle(color: kMuted, fontSize: 10),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.verified_outlined, size: 14, color: kPrimary),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'بيانات Transfermarkt',
+                    style: TextStyle(color: kMuted, fontSize: 10),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (history.topScorer != null) ...[
+          const SizedBox(height: 10),
+          _HeadToHeadScorerCard(scorer: history.topScorer!),
+        ],
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            const Icon(Icons.sports_soccer_rounded, color: kGold, size: 17),
+            const SizedBox(width: 6),
+            const Text(
+              'سجل المباريات',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+            ),
+            const Spacer(),
+            Text(
+              '${history.meetings.length} مباراة',
+              style: const TextStyle(color: kMuted, fontSize: 10),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        for (final meeting in history.meetings) ...[
+          _HeadToHeadMeetingTile(meeting: meeting),
+          const SizedBox(height: 7),
+        ],
+      ],
+    );
+  }
+}
+
+class _HeadToHeadStat extends StatelessWidget {
+  const _HeadToHeadStat({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: kMuted, fontSize: 8, fontWeight: FontWeight.w700),
+          ),
+        ],
+      );
+}
+
+class _HeadToHeadScorerCard extends StatelessWidget {
+  const _HeadToHeadScorerCard({required this.scorer});
+
+  final HeadToHeadScorer scorer;
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: kGold.withOpacity(.8), width: 2),
+              ),
+              child: CachedAvatar(url: scorer.photoUrl, size: 55),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'هداف المصري التاريخي',
+                    style: TextStyle(color: kMuted, fontSize: 10),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    scorer.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${scorer.goals ?? 0} هدف · ${scorer.appearances ?? 0} مشاركة',
+                    style: const TextStyle(color: kPrimary, fontSize: 10, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.emoji_events_rounded, color: kGold, size: 25),
+          ],
+        ),
+      );
+}
+
+class _HeadToHeadMeetingTile extends StatelessWidget {
+  const _HeadToHeadMeetingTile({required this.meeting});
+
+  final HeadToHeadMeeting meeting;
+
+  Color get resultColor => switch (meeting.result) {
+        'win' => kPrimary,
+        'draw' => kGold,
+        'loss' => const Color(0xffe77777),
+        _ => kMuted,
+      };
+
+  String get resultLabel => switch (meeting.result) {
+        'win' => 'فوز',
+        'draw' => 'تعادل',
+        'loss' => 'خسارة',
+        _ => '—',
+      };
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
+        decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: resultColor.withOpacity(.25)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: resultColor.withOpacity(.13),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    resultLabel,
+                    style: TextStyle(
+                      color: resultColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    meeting.competition,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: kMuted, fontSize: 9),
+                  ),
+                ),
+                Text(
+                  meeting.date ?? meeting.season ?? '—',
+                  style: const TextStyle(color: Colors.white60, fontSize: 9),
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                Expanded(
+                  child: _HeadToHeadTeam(
+                    name: meeting.homeTeam,
+                    crestUrl: meeting.homeCrestUrl,
+                    alignment: CrossAxisAlignment.start,
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 7),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: kCardAlt,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    meeting.homeScore == null || meeting.awayScore == null
+                        ? '—'
+                        : '${meeting.homeScore} - ${meeting.awayScore}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                Expanded(
+                  child: _HeadToHeadTeam(
+                    name: meeting.awayTeam,
+                    crestUrl: meeting.awayCrestUrl,
+                    alignment: CrossAxisAlignment.end,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+}
+
+class _HeadToHeadTeam extends StatelessWidget {
+  const _HeadToHeadTeam({
+    required this.name,
+    required this.crestUrl,
+    required this.alignment,
+  });
+
+  final String name;
+  final String? crestUrl;
+  final CrossAxisAlignment alignment;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment: alignment == CrossAxisAlignment.end
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        children: [
+          if (alignment == CrossAxisAlignment.end)
+            Flexible(
+              child: Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+              ),
+            ),
+          if (alignment == CrossAxisAlignment.end) const SizedBox(width: 6),
+          TeamLogo(url: crestUrl, size: 28),
+          if (alignment != CrossAxisAlignment.end) const SizedBox(width: 6),
+          if (alignment != CrossAxisAlignment.end)
+            Flexible(
+              child: Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+              ),
+            ),
+        ],
+      );
 }
 
 class _LineupsTab extends StatelessWidget {
