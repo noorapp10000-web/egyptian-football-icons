@@ -1,4 +1,4 @@
-const ORIGIN = "https://egyptian-football-api--kipox39688.replit.app";
+const ORIGIN = "https://egyptian-football-api-fixes--horohas599.replit.app";
 
 export default {
   async fetch(request) {
@@ -40,6 +40,12 @@ export default {
       cf: {
         cacheEverything: true,
         cacheTtl: ttl,
+        cacheTtlByStatus: {
+          "200-299": ttl,
+          "300-399": ttl,
+          "400-499": 0,
+          "500-599": 0,
+        },
       },
     });
 
@@ -48,12 +54,20 @@ export default {
     headers.set("X-Masrawy-Edge", "Cloudflare");
     headers.set("X-Masrawy-Cache", cacheStatus);
     headers.set("X-Masrawy-TTL", String(ttl));
+    headers.delete("set-cookie");
 
     if (response.status >= 200 && response.status < 400) {
       headers.set(
         "Cache-Control",
-        `public, s-maxage=${ttl}, stale-while-revalidate=30`,
+        `public, max-age=0, s-maxage=${ttl}, stale-while-revalidate=${Math.max(30, Math.min(ttl, 300))}`,
       );
+      headers.set(
+        "CDN-Cache-Control",
+        `public, max-age=0, s-maxage=${ttl}, stale-while-revalidate=${Math.max(30, Math.min(ttl, 300))}`,
+      );
+    } else {
+      headers.set("Cache-Control", "no-store");
+      headers.delete("CDN-Cache-Control");
     }
 
     console.log(
@@ -82,6 +96,7 @@ function getTTL(path) {
     path === "/api/football/matches" ||
     path.startsWith("/api/football/matches/")
   ) {
+    // Keep live scores fresh; the API itself selects a longer TTL when no match is live.
     return 20;
   }
 
