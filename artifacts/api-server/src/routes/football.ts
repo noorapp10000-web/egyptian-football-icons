@@ -8,7 +8,7 @@ import {
   loadStandings,
   loadTeam,
 } from "../lib/football-source";
-import { loadHeadToHead } from "../lib/head-to-head";
+import { loadTransfermarktHeadToHead as loadHeadToHead } from "../lib/transfermarkt";
 
 const router = Router();
 

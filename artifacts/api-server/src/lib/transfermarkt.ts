@@ -1,4 +1,3 @@
-import { loadSquad } from "../../../egyptian-football-hub/src/lib/filgoal.server";
 import { transfermarktSnapshot } from "../data/transfermarkt-3963";
 
 const EL_MASRY_ID = 9094;
@@ -279,29 +278,11 @@ export async function loadTransfermarktHeadToHead(opponentName: string) {
     competitions: new Set(meetings.map((meeting) => meeting.competition).filter(Boolean)).size,
   };
 
-  let topScorer: HeadToHeadData["topScorer"] = HISTORICAL_TOP_SCORER;
-  try {
-    const squad = await loadSquad();
-    const player = squad.players
-      .filter((item) => item.goals != null)
-      .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))[0];
-    if (player && (player.goals ?? 0) > 0) {
-      topScorer = {
-        name: player.name,
-        photoUrl: player.photoUrl,
-        goals: player.goals,
-        appearances: player.appearances,
-      };
-    }
-  } catch {
-    // The historical meetings remain useful when the current squad source is unavailable.
-  }
-
   const data: HeadToHeadData = {
     opponent: { id: opponentId, name: meetings[0]?.homeTeamId === opponentId ? meetings[0]!.homeTeam : meetings[0]!.awayTeam },
     source: { name: "Transfermarkt", url: sourceUrl, fetchedAt },
     summary,
-    topScorer,
+    topScorer: HISTORICAL_TOP_SCORER,
     meetings,
   };
   cache.set(opponentId, { expiresAt: Date.now() + 6 * 60 * 60_000, data });

@@ -82,6 +82,48 @@ export type StatRow = {
   unit: "percent" | "count";
 };
 
+export type PlayerCompetitionStat = {
+  competitionId: number | null;
+  competition: string;
+  teamName: string;
+  minutes: number | null;
+  appearances: number | null;
+  goals: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+};
+
+export type PlayerCareerStop = {
+  fromTeam: string | null;
+  toTeam: string | null;
+  toTeamCrestUrl: string | null;
+  position: string | null;
+  number: string | null;
+  from: string | null;
+  until: string | null;
+  duration: string | null;
+  contract: string | null;
+};
+
+export type PlayerDetail = {
+  id: number;
+  name: string;
+  role: string | null;
+  photoUrl: string | null;
+  club: string | null;
+  clubCrestUrl: string | null;
+  nationality: string | null;
+  birthDate: string | null;
+  birthPlace: string | null;
+  shirtNumber: string | null;
+  position: string | null;
+  availability: string | null;
+  totals: { label: string; value: number | null }[];
+  competitions: PlayerCompetitionStat[];
+  career: PlayerCareerStop[];
+  url: string;
+};
+
 export type SquadPlayer = {
   id: number;
   name: string;
@@ -330,7 +372,70 @@ function eventType(value: string) {
   if (normalized.includes("صفراء") || normalized.includes("yellow")) return "yellow";
   if (normalized.includes("حمراء") || normalized.includes("red")) return "red";
   if (normalized.includes("تبديل") || normalized.includes("sub")) return "substitution";
+  if (normalized.includes("ركني") || normalized.includes("corner")) return "corner";
+  if (normalized.includes("تسلل") || normalized.includes("offside")) return "offside";
+  if (normalized.includes("خطأ") || normalized.includes("foul")) return "foul";
+  if (normalized.includes("تصدي") || normalized.includes("save")) return "save";
+  if (normalized.includes("تسديد") || normalized.includes("shot") || normalized.includes("attempt")) {
+    return "shot";
+  }
+  if (normalized.includes("إصاب") || normalized.includes("اصاب") || normalized.includes("injur")) {
+    return "injury";
+  }
   return value || "event";
+}
+
+function deriveStats(events: MatchEvent[], homeId: number, awayId: number) {
+  const counters: Record<string, [number, number]> = {
+    shots: [0, 0],
+    onTarget: [0, 0],
+    corners: [0, 0],
+    fouls: [0, 0],
+    offsides: [0, 0],
+    saves: [0, 0],
+    yellow: [0, 0],
+    red: [0, 0],
+    substitutions: [0, 0],
+    injuries: [0, 0],
+  };
+  for (const event of events) {
+    const side = event.teamId === homeId ? 0 : event.teamId === awayId ? 1 : null;
+    if (side == null) continue;
+    const type = event.type.toLowerCase();
+    if (type === "corner" || type.includes("ركني")) counters.corners[side] += 1;
+    else if (type === "offside" || type.includes("تسلل")) counters.offsides[side] += 1;
+    else if (type === "foul" || type.includes("خطأ")) counters.fouls[side] += 1;
+    else if (type === "save" || type.includes("تصدي")) counters.saves[side] += 1;
+    else if (type === "shot" || type.includes("تسديد")) counters.shots[side] += 1;
+    else if (type === "yellow" || type.includes("صفراء")) counters.yellow[side] += 1;
+    else if (type === "red" || type.includes("حمراء")) counters.red[side] += 1;
+    else if (type === "substitution" || type.includes("تبديل")) counters.substitutions[side] += 1;
+    else if (type === "injury" || type.includes("إصاب") || type.includes("اصاب")) {
+      counters.injuries[side] += 1;
+    }
+  }
+  const labels: Array<[string, string]> = [
+    ["shots", "التسديدات"],
+    ["onTarget", "تسديدات على الهدف"],
+    ["corners", "الركنيات"],
+    ["saves", "تصديات الحارس"],
+    ["fouls", "الأخطاء"],
+    ["offsides", "التسلل"],
+    ["yellow", "بطاقات صفراء"],
+    ["red", "بطاقات حمراء"],
+    ["substitutions", "التبديلات"],
+    ["injuries", "الإصابات"],
+  ];
+  const rows = labels
+    .map(([key, label]) => ({
+      key,
+      label,
+      home: counters[key]![0],
+      away: counters[key]![1],
+      unit: "count" as const,
+    }))
+    .filter((row) => row.home > 0 || row.away > 0);
+  return { possession: null, rows };
 }
 
 function parseMatchModel(html: string): MatchDetail | null {
@@ -415,7 +520,7 @@ function parseMatchModel(html: string): MatchDetail | null {
     ),
     events,
     timeline: events,
-    stats: { possession: null, rows: [] },
+    stats: deriveStats(events, homeId, awayId),
     lineups: { home: homePlayers, away: awayPlayers, homeBench, awayBench },
   };
 }
@@ -461,7 +566,7 @@ function parseScorers(html: string) {
   return [...html.matchAll(/<div class="fg_rw">([\s\S]*?)(?=<div class="fg_rw">|$)/gi)]
     .map((match) => {
       const row = match[1]!;
-      const id = row.match(/href="\/[Pp]layers\/(\d+)\//i)?.[1];
+      const id = row.match(/href="[^"]*(?:persons|players)\/(\d+)(?:\/|["'])/i)?.[1];
       if (!id) return null;
       const cells = [...row.matchAll(/<div class="fg_cl t2">([\s\S]*?)<\/div>/gi)].map((cell) => num(decode(cell[1]!)));
       return { id: Number(id), goals: cells[0] ?? null, appearances: cells[1] ?? null, scoringRate: num(row.match(/data-value="(\d+)"/i)?.[1] ?? null) };
@@ -616,13 +721,72 @@ export async function loadPlayerDetail(playerId: number) {
     const head = html.match(/<div id="dhd">([\s\S]*?)<div class="bd">/i)?.[1] ?? html;
     const name = decode(head.match(/<h1>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
     if (!name) throw new Error("Player is unavailable");
+    const infoBlock = head.match(/<div class="s">\s*<ul>([\s\S]*?)<\/ul>/i)?.[1] ?? "";
+    const items = [...infoBlock.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)]
+      .map((match) => {
+        const raw = match[1]!;
+        const label = decode(raw.match(/<b>([\s\S]*?)<\/b>/i)?.[1] ?? "").replace(/[:：]\s*$/, "");
+        const value = decode(raw.replace(/<b>[\s\S]*?<\/b>/i, ""));
+        return { label, value };
+      })
+      .filter((item) => item.label && item.value);
+    const infoValue = (key: string) => items.find((item) => item.label.includes(key))?.value ?? null;
+    const totals = [...head.matchAll(/<li class="mip_stats"[\s\S]*?<b>([\s\S]*?)<\/b>\s*<span>([\s\S]*?)<\/span>/gi)]
+      .map((match) => ({ label: decode(match[2]!), value: num(decode(match[1]!)) }))
+      .filter((item) => item.label);
+    const competitions = [...html.matchAll(/<div class="fg_rw s" data-champid="(\d+)">([\s\S]*?)<\/div>\s*<\/div>/gi)]
+      .map((match) => {
+        const row = match[2]!;
+        const cells = [...row.matchAll(/<div class="fg_cl t3"[^>]*>([\s\S]*?)<\/div>/gi)]
+          .map((cell) => num(decode(cell[1]!)));
+        return {
+          competitionId: num(match[1]!),
+          competition: decode(row.match(/<div class="fg_cl t1">([\s\S]*?)<\/div>/i)?.[1] ?? ""),
+          teamName: decode(row.match(/<div class="fg_cl t2">([\s\S]*?)<\/div>/i)?.[1] ?? ""),
+          minutes: cells[0] ?? null,
+          appearances: cells[1] ?? null,
+          goals: cells[2] ?? null,
+          yellowCards: cells[3] ?? null,
+          redCards: cells[4] ?? null,
+        } satisfies PlayerCompetitionStat;
+      });
+    const careerBlock = html.match(/<div id="career-viewer">([\s\S]*?)<\/ul>/i)?.[1] ?? "";
+    const career = [...careerBlock.matchAll(/<li>([\s\S]*?)<\/li>/gi)].map((match) => {
+      const block = match[1]!;
+      const teams = [...block.matchAll(/<b>([\s\S]*?)<\/b>/gi)].map((item) => decode(item[1]!));
+      const fields = [...block.matchAll(/<span>\s*<label>([\s\S]*?)<\/label>([\s\S]*?)<\/span>/gi)]
+        .map((item) => ({ label: decode(item[1]!), value: decode(item[2]!) }));
+      const field = (key: string) => fields.find((item) => item.label.includes(key))?.value ?? null;
+      return {
+        fromTeam: teams[1] ?? null,
+        toTeam: teams[0] ?? null,
+        toTeamCrestUrl: absolute(block.match(/<img src="([^"]*Photos\/Team\/[^"]+)"/i)?.[1]),
+        position: field("مركز"),
+        number: field("رقم"),
+        from: field("من"),
+        until: field("حتى"),
+        duration: field("مده"),
+        contract: field("عقد"),
+      } satisfies PlayerCareerStop;
+    });
     return {
       id: playerId,
       name,
       role: decode(head.match(/data-player-position="([^"]*)"/i)?.[1] ?? "") || null,
       photoUrl: absolute(head.match(/data-src="([^"]*Photos\/Person\/[^"]+)"/i)?.[1]),
+      club: infoValue("النادي"),
+      clubCrestUrl: absolute(head.match(/data-src="([^"]*Photos\/Team\/[^"]+)"/i)?.[1]),
+      nationality: infoValue("الجنسية"),
+      birthDate: infoValue("تاريخ الميلاد"),
+      birthPlace: infoValue("مكان الميلاد"),
+      shirtNumber: infoValue("رقم القميص"),
+      position: infoValue("المركز"),
+      availability: infoValue("الحالة"),
+      totals,
+      competitions,
+      career,
       url,
-    };
+    } satisfies PlayerDetail;
   });
   return { player: entry.value, source: sourceOf("FilGoal", url, entry.live, entry.fetchedAt) };
 }
