@@ -22,14 +22,14 @@ export const getNews = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const getMatchDetail = createServerFn({ method: "GET" })
-  .inputValidator((data) => z.object({ matchId: z.number() }).parse(data))
+  .validator((data) => z.object({ matchId: z.number() }).parse(data))
   .handler(async ({ data }) => {
     const { loadMatchDetail } = await import("./filgoal.server");
     return loadMatchDetail(data.matchId);
   });
 
 export const getPlayerDetail = createServerFn({ method: "GET" })
-  .inputValidator((data) => z.object({ playerId: z.number() }).parse(data))
+  .validator((data) => z.object({ playerId: z.number() }).parse(data))
   .handler(async ({ data }) => {
     const { loadPlayerDetail } = await import("./filgoal.server");
     return loadPlayerDetail(data.playerId);

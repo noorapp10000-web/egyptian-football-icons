@@ -209,7 +209,7 @@ components:
         name: { type: string }
         url: { type: string, format: uri }
         fetchedAt: { type: string, format: date-time }
-         status: { type: string, enum: [live, reader, cached] }
+        status: { type: string, enum: [live, reader, cached] }
       required: [name, url, fetchedAt, status]
     Team:
       type: object
