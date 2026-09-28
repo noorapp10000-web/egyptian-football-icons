@@ -3,9 +3,11 @@ import { transfermarktSnapshot } from "../data/transfermarkt-3963";
 const EL_MASRY_ID = 9094;
 const EL_MASRY_NAME = "El Masry SC";
 const TRANSFERMARKT = "https://www.transfermarkt.com";
+const READER_PREFIX = "https://r.jina.ai/http://";
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36";
 const TIMEOUT_MS = 15_000;
+const MAX_PAGES = 20;
 
 export type HeadToHeadMeeting = {
   id: string;
@@ -24,9 +26,21 @@ export type HeadToHeadMeeting = {
   matchReportUrl: string | null;
 };
 
+export type HeadToHeadScorer = {
+  name: string;
+  photoUrl: string | null;
+  goals: number | null;
+  appearances: number | null;
+};
+
 export type HeadToHeadData = {
   opponent: { id: number; name: string };
-  source: { name: string; url: string; fetchedAt: string };
+  source: {
+    name: string;
+    url: string;
+    fetchedAt: string;
+    status?: "live" | "reader" | "cached";
+  };
   summary: {
     total: number;
     wins: number;
@@ -37,23 +51,13 @@ export type HeadToHeadData = {
     seasons: number;
     competitions: number;
   };
-  topScorer: {
-    name: string;
-    photoUrl: string | null;
-    goals: number | null;
-    appearances: number | null;
-  } | null;
+  topScorer: HeadToHeadScorer | null;
+  topScorers: HeadToHeadScorer[];
   meetings: HeadToHeadMeeting[];
 };
 
 const cache = new Map<number, { expiresAt: number; data: HeadToHeadData }>();
 const opponentCache = new Map<string, { expiresAt: number; id: number }>();
-const HISTORICAL_TOP_SCORER: NonNullable<HeadToHeadData["topScorer"]> = {
-  name: "أحمد جمعة",
-  photoUrl: "https://img.a.transfermarkt.technology/portrait/big/340006-1504786004.jpg",
-  goals: 54,
-  appearances: 177,
-};
 
 function decode(value: string) {
   return value
@@ -71,12 +75,25 @@ function absolute(value: string | null | undefined) {
   if (!value) return null;
   if (value.startsWith("//")) return `https:${value}`;
   if (value.startsWith("/")) return `${TRANSFERMARKT}${value}`;
-  return value;
+  return value.replace(/^http:\/\//, "https://");
+}
+
+function highQualityCrest(value: string | null) {
+  if (!value) return null;
+  return value
+    .replace(/\/wappen\/(?:tiny|small|medium|big)\//i, "/wappen/big/")
+    .replace(/\/wappen\/[^/]+\//i, "/wappen/big/");
+}
+
+function highQualityPortrait(value: string | null) {
+  if (!value) return null;
+  return value
+    .replace(/\/portrait\/(?:tiny|small|medium|big)\//i, "/portrait/big/")
+    .replace(/\/portrait\/[^/]+\//i, "/portrait/big/");
 }
 
 function attr(html: string, name: string) {
-  const match = html.match(new RegExp(`\\b${name}=["']([^"']+)["']`, "i"));
-  return match?.[1] ?? null;
+  return html.match(new RegExp(`\\b${name}=["']([^"']+)["']`, "i"))?.[1] ?? null;
 }
 
 function plainCell(cell: string) {
@@ -104,8 +121,20 @@ function teamFromAnchor(anchor: string, id: number) {
   return {
     id,
     name: decode(name) || (id === EL_MASRY_ID ? EL_MASRY_NAME : "—"),
-    crestUrl: absolute(crest),
+    crestUrl: highQualityCrest(absolute(crest)),
   };
+}
+
+function resultFor(homeId: number, homeScore: number | null, awayScore: number | null) {
+  const masryScore = homeId === EL_MASRY_ID ? homeScore : awayScore;
+  const opponentScore = homeId === EL_MASRY_ID ? awayScore : homeScore;
+  return masryScore == null || opponentScore == null
+    ? "unknown"
+    : masryScore > opponentScore
+      ? "win"
+      : masryScore < opponentScore
+        ? "loss"
+        : "draw";
 }
 
 function parseMeetingRow(row: string, opponentId: number): HeadToHeadMeeting | null {
@@ -118,19 +147,17 @@ function parseMeetingRow(row: string, opponentId: number): HeadToHeadMeeting | n
     /<a\b[^>]*href=["']([^"']*\/(?:startseite\/)?verein\/(\d+)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,
   )];
   if (teamAnchors.length < 2) return null;
-  const first = teamAnchors[0]!;
-  const second = teamAnchors[1]!;
-  const homeId = Number(first[2]);
-  const awayId = Number(second[2]);
+  const homeId = Number(teamAnchors[0]![2]);
+  const awayId = Number(teamAnchors[1]![2]);
   if (
     ![homeId, awayId].includes(EL_MASRY_ID) ||
     ![homeId, awayId].includes(opponentId)
   ) {
     return null;
   }
-  const home = teamFromAnchor(first[3]!, homeId);
-  const away = teamFromAnchor(second[3]!, awayId);
 
+  const home = teamFromAnchor(teamAnchors[0]![3]!, homeId);
+  const away = teamFromAnchor(teamAnchors[1]![3]!, awayId);
   const seasonLink = row.match(
     /<a\b[^>]*href=["'][^"']*saison_id\/\d+[^"']*["'][^>]*>([\s\S]*?)<\/a>/i,
   );
@@ -140,17 +167,6 @@ function parseMeetingRow(row: string, opponentId: number): HeadToHeadMeeting | n
   const rowText = plainCell(row);
   const date = rowText.match(/\b\d{2}\/\d{2}\/\d{4}\b/)?.[0] ?? null;
   const [homeScore, awayScore] = numberFromScore(plainCell(report[2]!));
-  const isMasryHome = homeId === EL_MASRY_ID;
-  const masryScore = isMasryHome ? homeScore : awayScore;
-  const opponentScore = isMasryHome ? awayScore : homeScore;
-  const result =
-    masryScore == null || opponentScore == null
-      ? "unknown"
-      : masryScore > opponentScore
-        ? "win"
-        : masryScore < opponentScore
-          ? "loss"
-          : "draw";
 
   return {
     id: report[1]!.match(/spielbericht\/(\d+)/)?.[1] ?? report[1]!,
@@ -165,30 +181,116 @@ function parseMeetingRow(row: string, opponentId: number): HeadToHeadMeeting | n
     awayCrestUrl: away.crestUrl,
     homeScore,
     awayScore,
-    result,
+    result: resultFor(homeId, homeScore, awayScore),
     matchReportUrl: absolute(report[1]),
   };
 }
 
-export function parseTransfermarktMeetings(
-  html: string,
-  opponentId: number,
-): HeadToHeadMeeting[] {
-  const rows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
-    .map((match) => parseMeetingRow(match[1]!, opponentId))
-    .filter((meeting): meeting is HeadToHeadMeeting => meeting !== null);
-  return [...new Map(rows.map((meeting) => [meeting.id, meeting])).values()];
+function markdownTeamLinks(row: string) {
+  return [...row.matchAll(
+    /\]\((https?:\/\/www\.transfermarkt\.com\/[^)]*\/(?:startseite\/)?verein\/(\d+)[^)]*)\s+"([^"]*)"\)/gi,
+  )].map((match) => ({
+    id: Number(match[2]),
+    name: decode(match[3]!),
+  }));
 }
 
-async function fetchHtml(url: string) {
+function parseMarkdownMeetingRow(row: string, opponentId: number) {
+  const report = row.match(
+    /\[(\d+\s*:\s*\d+|[-–]\s*:\s*[-–])\]\((https?:\/\/www\.transfermarkt\.com\/[^)]*spielbericht\/index\/spielbericht\/(\d+)[^)]*)/i,
+  );
+  if (!report) return null;
+
+  const teams = markdownTeamLinks(row);
+  if (teams.length < 2) return null;
+  const homeId = teams[0]!.id;
+  const awayId = teams[1]!.id;
+  if (
+    ![homeId, awayId].includes(EL_MASRY_ID) ||
+    ![homeId, awayId].includes(opponentId)
+  ) {
+    return null;
+  }
+
+  const crestUrls = [...row.matchAll(
+    /!\[[^\]]*\]\((https?:\/\/img\.a\.transfermarkt\.technology\/wappen\/[^)]+)\)/gi,
+  )].map((match) => highQualityCrest(match[1]!));
+  const score = numberFromScore(report[1]!);
+  const season = row.match(/\|\s*\[([^|\]]+)\]\(https?:\/\/www\.transfermarkt\.com\/[^)]*saison_id\/\d+[^)]*\)/i)?.[1];
+  const competitionMatches = [...row.matchAll(
+    /\]\(https?:\/\/www\.transfermarkt\.com\/[^)]*\/(?:wettbewerb|pokalwettbewerb)\/[^)]*\s+"([^"]+)"\)/gi,
+  )];
+  const competition = competitionMatches[1]?.[1] ?? competitionMatches[0]?.[1] ?? "مباراة";
+  const date = row.match(/\|\s*(\d{2}\/\d{2}\/\d{4})\s*\|/)?.[1] ?? null;
+
+  return {
+    id: report[3]!,
+    season: season ? decode(season) : null,
+    competition: decode(competition),
+    date,
+    homeTeam: teams[0]!.name,
+    awayTeam: teams[1]!.name,
+    homeTeamId: homeId,
+    awayTeamId: awayId,
+    homeCrestUrl: crestUrls[0] ?? highQualityCrest(`https://img.a.transfermarkt.technology/wappen/big/${homeId}.png`),
+    awayCrestUrl: crestUrls[1] ?? highQualityCrest(`https://img.a.transfermarkt.technology/wappen/big/${awayId}.png`),
+    homeScore: score[0],
+    awayScore: score[1],
+    result: resultFor(homeId, score[0], score[1]),
+    matchReportUrl: report[2]!,
+  } satisfies HeadToHeadMeeting;
+}
+
+export function parseTransfermarktMeetings(
+  source: string,
+  opponentId: number,
+): HeadToHeadMeeting[] {
+  const meetings = source.includes("<tr")
+    ? [...source.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
+        .map((match) => parseMeetingRow(match[1]!, opponentId))
+    : source
+        .split(/\r?\n/)
+        .map((line) => parseMarkdownMeetingRow(line, opponentId));
+  return [...new Map(
+    meetings
+      .filter((meeting): meeting is HeadToHeadMeeting => meeting !== null)
+      .map((meeting) => [meeting.id, meeting]),
+  ).values()];
+}
+
+function parseTopScorers(source: string): HeadToHeadScorer[] {
+  const heading = source.search(/top fixture-goal scorers/i);
+  if (heading < 0) return [];
+  const section = source.slice(heading).split(/\n#{1,3}\s+/)[0]!;
+  const scorers: HeadToHeadScorer[] = [];
+  const players = [...section.matchAll(
+    /!\[[^\]]*\]\((https?:\/\/img\.a\.transfermarkt\.technology\/portrait\/[^)]+)\)[\s\S]*?\[([^\]]+)\]\(https?:\/\/www\.transfermarkt\.com\/[^)]*\/spieler\/(\d+)[^)]*\)/gi,
+  )];
+  for (let index = 0; index < players.length; index += 1) {
+    const player = players[index]!;
+    const nextPlayerOffset = players[index + 1]?.index ?? section.length;
+    const tail = section.slice((player.index ?? 0) + player[0].length, nextPlayerOffset);
+    const goalsMatch = tail.match(
+      /\[(\d+)\]\(https?:\/\/www\.transfermarkt\.com\/jumplist\/bilanz\/spieler\/\d+/i,
+    );
+    scorers.push({
+      name: decode(player[2]!),
+      photoUrl: highQualityPortrait(player[1]!),
+      goals: goalsMatch ? Number(goalsMatch[1]) : null,
+      appearances: null,
+    });
+  }
+  return [...new Map(scorers.map((scorer) => [scorer.name, scorer])).values()];
+}
+
+async function fetchText(url: string, headers: Record<string, string> = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const response = await fetch(url, {
       headers: {
         "User-Agent": USER_AGENT,
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "en-US,en;q=0.8",
+        ...headers,
       },
       signal: controller.signal,
     });
@@ -197,6 +299,42 @@ async function fetchHtml(url: string) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function fetchTransfermarktPage(url: string) {
+  const readerUrl = `${READER_PREFIX}${url.replace(/^https?:\/\//i, "")}`;
+  try {
+    // The reader is intentionally tried first. A direct 202 response from
+    // Transfermarkt can poison the same outbound session for the reader.
+    const reader = await fetchText(readerUrl, {
+      "X-Return-Format": "markdown",
+      "User-Agent": "curl/8.0",
+    });
+    if (reader.trim().length > 500) {
+      return { content: reader, status: "reader" as const };
+    }
+  } catch {
+    // Fall through to the direct origin if the reader is unavailable.
+  }
+
+  try {
+    const direct = await fetchText(url);
+    if (
+      direct.trim().length > 500 &&
+      /spielbericht|\/verein\/|record vs|top fixture-goal/i.test(direct)
+    ) {
+      return { content: direct, status: "live" as const };
+    }
+  } catch {
+    // The direct origin often returns a bot-protection response in cloud runtimes.
+  }
+
+  throw new Error("Transfermarkt page is empty");
+}
+
+function pageUrl(baseUrl: string, page: number) {
+  const withoutPage = baseUrl.replace(/\/page\/\d+(?=\/|$)/i, "");
+  return page === 1 ? withoutPage : `${withoutPage}/page/${page}`;
 }
 
 function normalizeName(value: string) {
@@ -213,6 +351,27 @@ const knownOpponentIds: Record<string, number> = {
   "ittihad alexandria sc": 3963,
   "الاتحاد السكندري": 3963,
   "الاتحاد السكندرى": 3963,
+  "ceramica cleopatra": 57439,
+  "ceramica": 57439,
+  "cleopatra fc": 57439,
+  "سيراميكا كليوباترا": 57439,
+  "سيراميكا": 57439,
+  "al ahly": 7,
+  "al ahly sc": 7,
+  "al ahly fc": 7,
+  "الأهلي": 7,
+  "الاهلي": 7,
+  "zamalek": 664,
+  "zamalek sc": 664,
+  "الزمالك": 664,
+  "pyramids fc": 44664,
+  "pyramids": 44664,
+  "بيراميدز": 44664,
+  "enppi": 9218,
+  "enppi club": 9218,
+  "enppi sc": 9218,
+  "انبي": 9218,
+  "إنبي": 9218,
 };
 
 async function resolveOpponentId(name: string) {
@@ -223,44 +382,32 @@ async function resolveOpponentId(name: string) {
   if (cached && cached.expiresAt > Date.now()) return cached.id;
 
   const searchUrl = `${TRANSFERMARKT}/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(name)}`;
-  const html = await fetchHtml(searchUrl);
-  const matches = [...html.matchAll(
+  const { content } = await fetchTransfermarktPage(searchUrl);
+  const matches = [...content.matchAll(
     /<a\b[^>]*href=["'][^"']*\/(?:startseite\/)?verein\/(\d+)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi,
+  )];
+  const markdownMatches = [...content.matchAll(
+    /\]\((?:https?:\/\/www\.transfermarkt\.com)?\/?[^)]*\/(?:startseite\/)?verein\/(\d+)[^)]*\s+"([^"]+)"\)/gi,
   )];
   const wanted = normalizeName(name);
   const exact = matches.find((match) => normalizeName(decode(match[2]!)).includes(wanted));
-  const id = Number((exact ?? matches[0])?.[1]);
-  if (!Number.isInteger(id) || id <= 0) throw new Error("Transfermarkt opponent not found");
-  opponentCache.set(normalized, { expiresAt: Date.now() + 7 * 24 * 60 * 60_000, id });
+  const fromMarkdown = markdownMatches.find((match) => normalizeName(match[2]!).includes(wanted));
+  const id = Number((exact ?? fromMarkdown ?? matches[0] ?? markdownMatches[0])?.[1]);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("Transfermarkt opponent not found");
+  }
+  opponentCache.set(normalized, {
+    expiresAt: Date.now() + 7 * 24 * 60 * 60_000,
+    id,
+  });
   return id;
 }
 
-export async function loadTransfermarktHeadToHead(opponentName: string) {
-  const opponentId = await resolveOpponentId(opponentName);
-  const cached = cache.get(opponentId);
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
-
-  const url =
-    `${TRANSFERMARKT}/el-masry-sc/bilanzdetail/verein/${EL_MASRY_ID}` +
-    `/wettbewerb_id//gegner_id/${opponentId}/saison_id//heim_gast//datum_von//datum_bis//day/0/land_id/0`;
-  let meetings: HeadToHeadMeeting[] = [];
-  let sourceUrl = url;
-  let fetchedAt = new Date().toISOString();
-  try {
-    meetings = parseTransfermarktMeetings(await fetchHtml(url), opponentId);
-    if (meetings.length === 0) throw new Error("Transfermarkt head-to-head is empty");
-  } catch (error) {
-    if (opponentId !== 3963) throw error;
-    const snapshot = transfermarktSnapshot as unknown as HeadToHeadData;
-    meetings = snapshot.meetings;
-    sourceUrl = `${snapshot.source.url}#cached-snapshot`;
-    fetchedAt = new Date().toISOString();
-  }
-
+function summaryFor(meetings: HeadToHeadMeeting[]) {
   const played = meetings.filter(
     (meeting) => meeting.homeScore != null && meeting.awayScore != null,
   );
-  const summary = {
+  return {
     total: played.length,
     wins: played.filter((meeting) => meeting.result === "win").length,
     draws: played.filter((meeting) => meeting.result === "draw").length,
@@ -277,14 +424,74 @@ export async function loadTransfermarktHeadToHead(opponentName: string) {
     seasons: new Set(meetings.map((meeting) => meeting.season).filter(Boolean)).size,
     competitions: new Set(meetings.map((meeting) => meeting.competition).filter(Boolean)).size,
   };
+}
 
+export async function loadTransfermarktHeadToHead(opponentName: string) {
+  const opponentId = await resolveOpponentId(opponentName);
+  const cached = cache.get(opponentId);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+  const baseUrl = `${TRANSFERMARKT}/vergleich/bilanzdetail/verein/${EL_MASRY_ID}/gegner_id/${opponentId}`;
+  let meetings: HeadToHeadMeeting[] = [];
+  let topScorers: HeadToHeadScorer[] = [];
+  let sourceStatus: "live" | "reader" | "cached" = "live";
+  let sourceUrl = baseUrl;
+  let fetchedAt = new Date().toISOString();
+
+  try {
+    for (let page = 1; page <= MAX_PAGES; page += 1) {
+      const fetched = await fetchTransfermarktPage(pageUrl(baseUrl, page));
+      sourceStatus = fetched.status;
+      if (page === 1) {
+        topScorers = parseTopScorers(fetched.content);
+      }
+      const current = parseTransfermarktMeetings(fetched.content, opponentId);
+      const before = meetings.length;
+      meetings = [...new Map(
+        [...meetings, ...current].map((meeting) => [meeting.id, meeting]),
+      ).values()];
+      if (current.length === 0 || meetings.length === before) break;
+    }
+    if (meetings.length === 0) throw new Error("Transfermarkt head-to-head is empty");
+  } catch (error) {
+    if (opponentId !== 3963) throw error;
+    const snapshot = transfermarktSnapshot as unknown as HeadToHeadData;
+    meetings = snapshot.meetings.map((meeting) => ({
+      ...meeting,
+      homeCrestUrl: highQualityCrest(meeting.homeCrestUrl),
+      awayCrestUrl: highQualityCrest(meeting.awayCrestUrl),
+    }));
+    sourceStatus = "cached";
+    sourceUrl = `${snapshot.source.url}#cached-snapshot`;
+    fetchedAt = new Date().toISOString();
+  }
+
+  const opponentMeeting = meetings.find(
+    (meeting) => meeting.homeTeamId === opponentId || meeting.awayTeamId === opponentId,
+  );
   const data: HeadToHeadData = {
-    opponent: { id: opponentId, name: meetings[0]?.homeTeamId === opponentId ? meetings[0]!.homeTeam : meetings[0]!.awayTeam },
-    source: { name: "Transfermarkt", url: sourceUrl, fetchedAt },
-    summary,
-    topScorer: HISTORICAL_TOP_SCORER,
+    opponent: {
+      id: opponentId,
+      name: opponentMeeting
+        ? opponentMeeting.homeTeamId === opponentId
+          ? opponentMeeting.homeTeam
+          : opponentMeeting.awayTeam
+        : opponentName,
+    },
+    source: {
+      name: "Transfermarkt",
+      url: sourceUrl,
+      fetchedAt,
+      status: sourceStatus,
+    },
+    summary: summaryFor(meetings),
+    topScorer: topScorers[0] ?? null,
+    topScorers,
     meetings,
   };
-  cache.set(opponentId, { expiresAt: Date.now() + 6 * 60 * 60_000, data });
+  cache.set(opponentId, {
+    expiresAt: Date.now() + 6 * 60 * 60_000,
+    data,
+  });
   return data;
 }
