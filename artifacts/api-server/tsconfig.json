@@ -6,7 +6,8 @@
     "outDir": "dist",
     "rootDir": "..",
     "lib": ["ES2022", "DOM"],
-    "types": ["node"]
+    "types": ["node"],
+    "resolveJsonModule": true
   },
   "include": ["src"],
   "references": [

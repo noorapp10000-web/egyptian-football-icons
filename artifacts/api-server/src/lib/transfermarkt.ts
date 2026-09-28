@@ -1,4 +1,5 @@
 import { transfermarktSnapshot } from "../data/transfermarkt-3963";
+import transfermarktSnapshots from "../data/transfermarkt-snapshots.json";
 
 const EL_MASRY_ID = 9094;
 const EL_MASRY_NAME = "El Masry SC";
@@ -58,6 +59,8 @@ export type HeadToHeadData = {
 
 const cache = new Map<number, { expiresAt: number; data: HeadToHeadData }>();
 const opponentCache = new Map<string, { expiresAt: number; id: number }>();
+const inFlight = new Map<number, Promise<HeadToHeadData>>();
+let transfermarktQueue = Promise.resolve();
 
 function decode(value: string) {
   return value
@@ -284,21 +287,40 @@ function parseTopScorers(source: string): HeadToHeadScorer[] {
 }
 
 async function fetchText(url: string, headers: Record<string, string> = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        ...headers,
-      },
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error(`Transfermarkt ${response.status}`);
-    return await response.text();
-  } finally {
-    clearTimeout(timer);
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    let release: (() => void) | undefined;
+    try {
+      const previous = transfermarktQueue;
+      transfermarktQueue = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await previous;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": USER_AGENT,
+          ...headers,
+        },
+        signal: controller.signal,
+      });
+      if (response.ok) return await response.text();
+      lastError = new Error(`Transfermarkt ${response.status}`);
+      const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+      if (!retryable) throw lastError;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 2) throw error;
+    } finally {
+      // Release the next request even when the upstream or parser fails.
+      release?.();
+      clearTimeout(timer);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** attempt));
   }
+  throw lastError instanceof Error ? lastError : new Error("Transfermarkt unavailable");
 }
 
 async function fetchTransfermarktPage(url: string) {
@@ -310,7 +332,10 @@ async function fetchTransfermarktPage(url: string) {
       "X-Return-Format": "markdown",
       "User-Agent": "curl/8.0",
     });
-    if (reader.trim().length > 500) {
+    if (
+      reader.trim().length > 500 &&
+      /spielbericht|record vs|bilanz|\/verein\//i.test(reader)
+    ) {
       return { content: reader, status: "reader" as const };
     }
   } catch {
@@ -372,11 +397,58 @@ const knownOpponentIds: Record<string, number> = {
   "enppi sc": 9218,
   "انبي": 9218,
   "إنبي": 9218,
+  "القناة": 24297,
+  "qanah": 24297,
+  "qanah fc": 24297,
+  "أبو قير للأسمدة": 39575,
+  "abo qir fertilizers": 39575,
+  "abu qir fertilizers": 39575,
+  "البنك الأهلي": 62448,
+  "bank el ahly": 62448,
+  "national bank of egypt": 62448,
+  "بترول أسيوط": 16216,
+  "petrol asyut": 16216,
+  "asyut petrol": 16216,
+  "م.السـويس بتروجت": 10957,
+  "م.السويس بتروجت": 10957,
+  "بتروجت": 10957,
+  "suez petrojet fc": 10957,
+  "petrojet": 10957,
+  "المقاولون العرب": 3369,
+  "el mokawloon sc": 3369,
+  "arab contractors": 3369,
+  "سموحة": 23387,
+  "smouha": 23387,
+  "smouha sc": 23387,
+  "مودرن سبورت": 68770,
+  "modern sport club": 68770,
+  "modern future": 68770,
+  "طلائع الجيش": 9219,
+  "tala'ea el gaish": 9219,
+  "talaea el gaish": 9219,
+  "زد": 47010,
+  "زد اف سي": 47010,
+  "zed fc": 47010,
+  "وادي دجلة": 18234,
+  "wadi degla": 18234,
+  "wadi degla fc": 18234,
+  "الشرقية إنبي": 9218,
+  "el sharkia enppi fc": 9218,
+  "الجونة": 20572,
+  "el gouna": 20572,
+  "el gouna fc": 20572,
+  "غزل المحلة": 13446,
+  "ghazl el mahalla": 13446,
+  "ghazl mahalla": 13446,
 };
+const normalizedOpponentIds = new Map(
+  Object.entries(knownOpponentIds).map(([name, id]) => [normalizeName(name), id]),
+);
+const persistedSnapshots = Object.values(transfermarktSnapshots as Record<string, HeadToHeadData>);
 
 async function resolveOpponentId(name: string) {
   const normalized = normalizeName(name);
-  const known = knownOpponentIds[normalized];
+  const known = knownOpponentIds[normalized] ?? normalizedOpponentIds.get(normalized);
   if (known) return known;
   const cached = opponentCache.get(normalized);
   if (cached && cached.expiresAt > Date.now()) return cached.id;
@@ -430,68 +502,85 @@ export async function loadTransfermarktHeadToHead(opponentName: string) {
   const opponentId = await resolveOpponentId(opponentName);
   const cached = cache.get(opponentId);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
+  const pending = inFlight.get(opponentId);
+  if (pending) return pending;
 
-  const baseUrl = `${TRANSFERMARKT}/vergleich/bilanzdetail/verein/${EL_MASRY_ID}/gegner_id/${opponentId}`;
-  let meetings: HeadToHeadMeeting[] = [];
-  let topScorers: HeadToHeadScorer[] = [];
-  let sourceStatus: "live" | "reader" | "cached" = "live";
-  let sourceUrl = baseUrl;
-  let fetchedAt = new Date().toISOString();
+  const request = (async () => {
+    const baseUrl = `${TRANSFERMARKT}/vergleich/bilanzdetail/verein/${EL_MASRY_ID}/gegner_id/${opponentId}`;
+    let meetings: HeadToHeadMeeting[] = [];
+    let topScorers: HeadToHeadScorer[] = [];
+    let sourceStatus: "live" | "reader" | "cached" = "live";
+    let sourceUrl = baseUrl;
+    let fetchedAt = new Date().toISOString();
 
-  try {
-    for (let page = 1; page <= MAX_PAGES; page += 1) {
-      const fetched = await fetchTransfermarktPage(pageUrl(baseUrl, page));
-      sourceStatus = fetched.status;
-      if (page === 1) {
-        topScorers = parseTopScorers(fetched.content);
+    try {
+      for (let page = 1; page <= MAX_PAGES; page += 1) {
+        const fetched = await fetchTransfermarktPage(pageUrl(baseUrl, page));
+        sourceStatus = fetched.status;
+        if (page === 1) {
+          topScorers = parseTopScorers(fetched.content);
+        }
+        const current = parseTransfermarktMeetings(fetched.content, opponentId);
+        const before = meetings.length;
+        meetings = [...new Map(
+          [...meetings, ...current].map((meeting) => [meeting.id, meeting]),
+        ).values()];
+        if (current.length === 0 || meetings.length === before) break;
       }
-      const current = parseTransfermarktMeetings(fetched.content, opponentId);
-      const before = meetings.length;
-      meetings = [...new Map(
-        [...meetings, ...current].map((meeting) => [meeting.id, meeting]),
-      ).values()];
-      if (current.length === 0 || meetings.length === before) break;
+      if (meetings.length === 0) throw new Error("Transfermarkt head-to-head is empty");
+      // Transfermarkt includes future fixtures on the same page. This API is
+      // the historical record, so only return matches with a final score.
+      meetings = meetings.filter(
+        (meeting) => meeting.homeScore != null && meeting.awayScore != null,
+      );
+    } catch (error) {
+      const snapshot =
+        persistedSnapshots.find((item) => item.opponent.id === opponentId) ??
+        (opponentId === 3963 ? (transfermarktSnapshot as unknown as HeadToHeadData) : null);
+      if (!snapshot) throw error;
+      meetings = snapshot.meetings.map((meeting) => ({
+        ...meeting,
+        homeCrestUrl: highQualityCrest(meeting.homeCrestUrl),
+        awayCrestUrl: highQualityCrest(meeting.awayCrestUrl),
+      }));
+      sourceStatus = "cached";
+      sourceUrl = `${snapshot.source.url}#cached-snapshot`;
+      fetchedAt = new Date().toISOString();
     }
-    if (meetings.length === 0) throw new Error("Transfermarkt head-to-head is empty");
-  } catch (error) {
-    if (opponentId !== 3963) throw error;
-    const snapshot = transfermarktSnapshot as unknown as HeadToHeadData;
-    meetings = snapshot.meetings.map((meeting) => ({
-      ...meeting,
-      homeCrestUrl: highQualityCrest(meeting.homeCrestUrl),
-      awayCrestUrl: highQualityCrest(meeting.awayCrestUrl),
-    }));
-    sourceStatus = "cached";
-    sourceUrl = `${snapshot.source.url}#cached-snapshot`;
-    fetchedAt = new Date().toISOString();
-  }
 
-  const opponentMeeting = meetings.find(
-    (meeting) => meeting.homeTeamId === opponentId || meeting.awayTeamId === opponentId,
-  );
-  const data: HeadToHeadData = {
-    opponent: {
-      id: opponentId,
-      name: opponentMeeting
-        ? opponentMeeting.homeTeamId === opponentId
-          ? opponentMeeting.homeTeam
-          : opponentMeeting.awayTeam
-        : opponentName,
-    },
-    source: {
-      name: "Transfermarkt",
-      url: sourceUrl,
-      fetchedAt,
-      status: sourceStatus,
-    },
-    summary: summaryFor(meetings),
-    topScorer: topScorers[0] ?? null,
-    topScorers,
-    meetings,
-  };
-  cache.set(opponentId, {
-    expiresAt: Date.now() + 6 * 60 * 60_000,
-    data,
-  });
-  return data;
+    const opponentMeeting = meetings.find(
+      (meeting) => meeting.homeTeamId === opponentId || meeting.awayTeamId === opponentId,
+    );
+    const data: HeadToHeadData = {
+      opponent: {
+        id: opponentId,
+        name: opponentMeeting
+          ? opponentMeeting.homeTeamId === opponentId
+            ? opponentMeeting.homeTeam
+            : opponentMeeting.awayTeam
+          : opponentName,
+      },
+      source: {
+        name: "Transfermarkt",
+        url: sourceUrl,
+        fetchedAt,
+        status: sourceStatus,
+      },
+      summary: summaryFor(meetings),
+      topScorer: topScorers[0] ?? null,
+      topScorers,
+      meetings,
+    };
+    cache.set(opponentId, {
+      expiresAt: Date.now() + 6 * 60 * 60_000,
+      data,
+    });
+    return data;
+  })();
+  inFlight.set(opponentId, request);
+  try {
+    return await request;
+  } finally {
+    inFlight.delete(opponentId);
+  }
 }
