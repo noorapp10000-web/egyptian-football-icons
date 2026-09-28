@@ -209,7 +209,7 @@ components:
         name: { type: string }
         url: { type: string, format: uri }
         fetchedAt: { type: string, format: date-time }
-        status: { type: string, enum: [live, cached] }
+         status: { type: string, enum: [live, reader, cached] }
       required: [name, url, fetchedAt, status]
     Team:
       type: object
@@ -383,7 +383,30 @@ components:
       required: [news, source]
     HeadToHeadMeeting:
       type: object
-      additionalProperties: true
+      properties:
+        id: { type: string }
+        season: { type: [string, "null"] }
+        competition: { type: string }
+        date: { type: [string, "null"] }
+        homeTeam: { type: string }
+        awayTeam: { type: string }
+        homeTeamId: { type: [integer, "null"] }
+        awayTeamId: { type: [integer, "null"] }
+        homeCrestUrl: { type: [string, "null"], format: uri }
+        awayCrestUrl: { type: [string, "null"], format: uri }
+        homeScore: { type: [integer, "null"] }
+        awayScore: { type: [integer, "null"] }
+        result: { type: string, enum: [win, draw, loss, unknown] }
+        matchReportUrl: { type: [string, "null"], format: uri }
+      required: [id, competition, homeTeam, awayTeam, result]
+    HeadToHeadScorer:
+      type: object
+      properties:
+        name: { type: string }
+        photoUrl: { type: [string, "null"], format: uri }
+        goals: { type: [integer, "null"] }
+        appearances: { type: [integer, "null"] }
+      required: [name, photoUrl, goals, appearances]
     HeadToHeadResponse:
       type: object
       properties:
@@ -398,8 +421,13 @@ components:
           type: object
           additionalProperties: true
         topScorer:
-          type: [object, "null"]
+          allOf:
+            - $ref: "#/components/schemas/HeadToHeadScorer"
+          nullable: true
+        topScorers:
+          type: array
+          items: { $ref: "#/components/schemas/HeadToHeadScorer" }
         meetings:
           type: array
           items: { $ref: "#/components/schemas/HeadToHeadMeeting" }
-      required: [opponent, source, summary, meetings]
+      required: [opponent, source, summary, topScorers, meetings]
