@@ -419,6 +419,7 @@ class HeadToHeadData {
     required this.summary,
     required this.meetings,
     this.topScorer,
+    this.topScorers = const [],
     this.sourceUrl,
   });
 
@@ -426,12 +427,18 @@ class HeadToHeadData {
   final HeadToHeadSummary summary;
   final List<HeadToHeadMeeting> meetings;
   final HeadToHeadScorer? topScorer;
+  final List<HeadToHeadScorer> topScorers;
   final String? sourceUrl;
 
   factory HeadToHeadData.fromJson(Map<String, dynamic> json) {
     final opponent = (json['opponent'] as Map?)?.cast<String, dynamic>() ?? const {};
     final summary = (json['summary'] as Map?)?.cast<String, dynamic>() ?? const {};
     final scorer = (json['topScorer'] as Map?)?.cast<String, dynamic>();
+    final scorers = (json['topScorers'] as List?)
+            ?.whereType<Map>()
+            .map((item) => HeadToHeadScorer.fromJson(item.cast<String, dynamic>()))
+            .toList() ??
+        const <HeadToHeadScorer>[];
     final meetings = (json['meetings'] as List?)
             ?.whereType<Map>()
             .map((item) => HeadToHeadMeeting.fromJson(item.cast<String, dynamic>()))
@@ -443,6 +450,7 @@ class HeadToHeadData {
       summary: HeadToHeadSummary.fromJson(summary),
       meetings: meetings,
       topScorer: scorer == null ? null : HeadToHeadScorer.fromJson(scorer),
+      topScorers: scorers,
       sourceUrl: source?['url']?.toString(),
     );
   }
