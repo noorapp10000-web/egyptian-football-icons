@@ -4287,6 +4287,11 @@ class _HeadToHeadTab extends StatelessWidget {
     }
 
     final summary = history.summary;
+    final scorers = history.topScorers.isNotEmpty
+        ? history.topScorers
+        : (history.topScorer == null
+              ? const <HeadToHeadScorer>[]
+              : [history.topScorer!]);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -4409,9 +4414,12 @@ class _HeadToHeadTab extends StatelessWidget {
             ],
           ),
         ),
-        if (history.topScorer != null) ...[
+        if (scorers.isNotEmpty) ...[
           const SizedBox(height: 10),
-          _HeadToHeadScorerCard(scorer: history.topScorer!),
+          for (var index = 0; index < scorers.length; index++) ...[
+            _HeadToHeadScorerCard(scorer: scorers[index], rank: index + 1),
+            if (index != scorers.length - 1) const SizedBox(height: 7),
+          ],
         ],
         const SizedBox(height: 10),
         Row(
@@ -4471,9 +4479,13 @@ class _HeadToHeadStat extends StatelessWidget {
 }
 
 class _HeadToHeadScorerCard extends StatelessWidget {
-  const _HeadToHeadScorerCard({required this.scorer});
+  const _HeadToHeadScorerCard({
+    required this.scorer,
+    required this.rank,
+  });
 
   final HeadToHeadScorer scorer;
+  final int rank;
 
   @override
   Widget build(BuildContext context) => SectionCard(
@@ -4494,7 +4506,7 @@ class _HeadToHeadScorerCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'هداف المصري التاريخي',
+                    'هداف المواجهة التاريخية',
                     style: TextStyle(color: kMuted, fontSize: 10),
                   ),
                   const SizedBox(height: 2),
@@ -4506,13 +4518,22 @@ class _HeadToHeadScorerCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${scorer.goals ?? 0} هدف · ${scorer.appearances ?? 0} مشاركة',
+                    scorer.appearances == null
+                        ? '${scorer.goals ?? 0} هدف'
+                        : '${scorer.goals ?? 0} هدف · ${scorer.appearances} مشاركة',
                     style: const TextStyle(color: kPrimary, fontSize: 10, fontWeight: FontWeight.w800),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.emoji_events_rounded, color: kGold, size: 25),
+            Text(
+              '#$rank',
+              style: const TextStyle(
+                color: kGold,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ],
         ),
       );
