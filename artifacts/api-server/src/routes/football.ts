@@ -78,7 +78,9 @@ router.get("/football/head-to-head", async (req, res) => {
   }
   try {
     const data = await loadHeadToHead(opponent);
-    setPublicCache(res, 172_800, 3_600);
+    // Keep this response short-lived; otherwise an empty upstream fallback can
+    // remain cached at the edge long after the scorer data has recovered.
+    setPublicCache(res, 900, 900);
     res.json(data);
   } catch (error) {
     req.log?.warn({ err: error, opponent }, "Head-to-head source unavailable");

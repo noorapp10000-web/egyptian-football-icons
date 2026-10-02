@@ -498,6 +498,14 @@ function summaryFor(meetings: HeadToHeadMeeting[]) {
   };
 }
 
+function scorersFromSnapshot(snapshot: HeadToHeadData): HeadToHeadScorer[] {
+  return snapshot.topScorers?.length
+    ? snapshot.topScorers
+    : snapshot.topScorer
+      ? [snapshot.topScorer]
+      : [];
+}
+
 export async function loadTransfermarktHeadToHead(opponentName: string) {
   const opponentId = await resolveOpponentId(opponentName);
   const cached = cache.get(opponentId);
@@ -512,6 +520,9 @@ export async function loadTransfermarktHeadToHead(opponentName: string) {
     let sourceStatus: "live" | "reader" | "cached" = "live";
     let sourceUrl = baseUrl;
     let fetchedAt = new Date().toISOString();
+    const fallbackSnapshot =
+      persistedSnapshots.find((item) => item.opponent.id === opponentId) ??
+      (opponentId === 3963 ? (transfermarktSnapshot as unknown as HeadToHeadData) : null);
 
     try {
       for (let page = 1; page <= MAX_PAGES; page += 1) {
@@ -534,18 +545,26 @@ export async function loadTransfermarktHeadToHead(opponentName: string) {
         (meeting) => meeting.homeScore != null && meeting.awayScore != null,
       );
     } catch (error) {
-      const snapshot =
-        persistedSnapshots.find((item) => item.opponent.id === opponentId) ??
-        (opponentId === 3963 ? (transfermarktSnapshot as unknown as HeadToHeadData) : null);
-      if (!snapshot) throw error;
-      meetings = snapshot.meetings.map((meeting) => ({
+      if (!fallbackSnapshot) throw error;
+      meetings = fallbackSnapshot.meetings.map((meeting) => ({
         ...meeting,
         homeCrestUrl: highQualityCrest(meeting.homeCrestUrl),
         awayCrestUrl: highQualityCrest(meeting.awayCrestUrl),
       }));
+      topScorers = scorersFromSnapshot(fallbackSnapshot);
       sourceStatus = "cached";
-      sourceUrl = `${snapshot.source.url}#cached-snapshot`;
+      sourceUrl = `${fallbackSnapshot.source.url}#cached-snapshot`;
       fetchedAt = new Date().toISOString();
+    }
+
+    // Some upstream responses contain the fixture table but omit the scorer
+    // table. Use the verified snapshot rather than presenting that as no data.
+    if (topScorers.length === 0 && fallbackSnapshot) {
+      topScorers = scorersFromSnapshot(fallbackSnapshot);
+      if (topScorers.length > 0) {
+        sourceStatus = "cached";
+        sourceUrl = `${fallbackSnapshot.source.url}#cached-scorers`;
+      }
     }
 
     const opponentMeeting = meetings.find(
